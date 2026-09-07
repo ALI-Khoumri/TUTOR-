@@ -1,0 +1,149 @@
+﻿<div class="auth-page">
+  <!-- Left Panel -->
+  <div class="auth-left">
+    <div class="auth-left__inner">
+      <div class="brand">
+        <span class="brand__icon">🎓</span>
+        <span class="brand__name">TutorAI</span>
+      </div>
+      <h1 class="auth-left__headline">
+        Commence ton<br>
+        <span class="gradient-text">aventure.</span>
+      </h1>
+      <p class="auth-left__sub">
+        Crée ton compte gratuit et accède à un tuteur IA adapté au système scolaire marocain.
+      </p>
+      <div class="steps">
+        <div class="step">
+          <span class="step__num">1</span>
+          <span>Crée ton compte</span>
+        </div>
+        <div class="step">
+          <span class="step__num">2</span>
+          <span>Configure ton profil scolaire</span>
+        </div>
+        <div class="step">
+          <span class="step__num">3</span>
+          <span>Commence à apprendre !</span>
+        </div>
+      </div>
+    </div>
+    <div class="auth-left__glow"></div>
+  </div>
+
+  <!-- Right Panel — Form -->
+  <div class="auth-right">
+    <div class="auth-card">
+      <div class="auth-card__header">
+        <h2>Créer un compte 🚀</h2>
+        <p>Quelques secondes suffisent pour commencer</p>
+      </div>
+
+      <form class="auth-form" (ngSubmit)="onSubmit()" novalidate>
+
+        <!-- Prénom -->
+        <div class="field">
+          <label for="firstName">Prénom</label>
+          <div class="input-wrap">
+            <span class="input-icon">👤</span>
+            <input
+              id="firstName"
+              type="text"
+              [(ngModel)]="firstName"
+              name="firstName"
+              placeholder="Ex : Youssef"
+              autocomplete="given-name"
+            />
+          </div>
+        </div>
+
+        <!-- Email -->
+        <div class="field">
+          <label for="email">Adresse email</label>
+          <div class="input-wrap">
+            <span class="input-icon">✉️</span>
+            <input
+              id="email"
+              type="email"
+              [(ngModel)]="email"
+              name="email"
+              placeholder="exemple@gmail.com"
+              autocomplete="email"
+            />
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="field">
+          <label for="password">Mot de passe</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔐</span>
+            <input
+              id="password"
+              [type]="showPassword ? 'text' : 'password'"
+              [(ngModel)]="password"
+              name="password"
+              placeholder="Au moins 6 caractères"
+              autocomplete="new-password"
+            />
+            <button type="button" class="toggle-pw" (click)="showPassword = !showPassword" tabindex="-1">
+              {{ showPassword ? '🙈' : '👁️' }}
+            </button>
+          </div>
+          <!-- Password strength -->
+          <div class="strength" *ngIf="password.length > 0">
+            <div class="strength__bar">
+              <div class="strength__fill" [class]="'strength__fill--' + passwordStrength"></div>
+            </div>
+            <span class="strength__label" [class]="'strength__label--' + passwordStrength">
+              {{ passwordStrength === 'weak' ? 'Faible' : passwordStrength === 'medium' ? 'Moyen' : 'Fort' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="field">
+          <label for="confirm">Confirmer le mot de passe</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input
+              id="confirm"
+              [type]="showConfirm ? 'text' : 'password'"
+              [(ngModel)]="confirmPassword"
+              name="confirmPassword"
+              placeholder="Répète ton mot de passe"
+              autocomplete="new-password"
+              [class.has-error]="confirmPassword.length > 0 && password !== confirmPassword"
+              [class.is-valid]="confirmPassword.length > 0 && password === confirmPassword"
+            />
+            <button type="button" class="toggle-pw" (click)="showConfirm = !showConfirm" tabindex="-1">
+              {{ showConfirm ? '🙈' : '👁️' }}
+            </button>
+          </div>
+          <span class="field__hint match-ok" *ngIf="confirmPassword.length > 0 && password === confirmPassword">
+            ✅ Les mots de passe correspondent
+          </span>
+          <span class="field__hint match-err" *ngIf="confirmPassword.length > 0 && password !== confirmPassword">
+            ❌ Les mots de passe ne correspondent pas
+          </span>
+        </div>
+
+        <!-- Error -->
+        <div class="error-banner" *ngIf="errorMsg()">
+          <span>⚠️</span> {{ errorMsg() }}
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" class="btn-submit" [disabled]="!canSubmit" [class.loading]="loading()">
+          <span *ngIf="!loading()">Créer mon compte</span>
+          <span *ngIf="loading()">⏳ Création en cours...</span>
+        </button>
+      </form>
+
+      <div class="auth-card__footer">
+        Déjà un compte ?
+        <a routerLink="/login" class="link">Se connecter</a>
+      </div>
+    </div>
+  </div>
+</div>

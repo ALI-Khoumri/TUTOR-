@@ -1,0 +1,54 @@
+<div class="tutor-shell page-enter">
+  <main class="center">
+    <section class="greeting-bar" *ngIf="profile$ | async as profile">
+      <div class="greeting-text">
+        <span class="greeting-hello">Bonjour, {{ profile.firstName }} 👋</span>
+        <span class="greeting-status">Voici où tu en es aujourd'hui.</span>
+      </div>
+      <div class="greeting-stats" *ngIf="session$ | async as session">
+        <div class="mini-stat">
+          <span class="mini-stat__label">Matière</span>
+          <strong>{{ session.subject }}</strong>
+        </div>
+        <div class="mini-stat">
+          <span class="mini-stat__label">Progression</span>
+          <strong *ngIf="profile.diagnosticResults">{{ profile.diagnosticResults.overallScore }}%</strong>
+          <strong *ngIf="!profile.diagnosticResults">En cours</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- Subject Switcher -->
+    <section class="subject-switcher" *ngIf="subjects.length > 1">
+      <div class="switcher-label">
+        <mat-icon>swap_horiz</mat-icon>
+        <span>Changer de matière :</span>
+      </div>
+      <div class="switcher-pills">
+        <button
+          *ngFor="let subj of subjects"
+          type="button"
+          class="subject-pill"
+          [class.is-active]="subj === activeSubject"
+          [class.is-switching]="isSwitching && subj === activeSubject"
+          [disabled]="isSwitching"
+          (click)="switchSubject(subj)"
+        >
+          {{ subj }}
+        </button>
+      </div>
+    </section>
+
+    <div class="tutor-body">
+      <div class="chat-column">
+        <app-session-header></app-session-header>
+        <app-tutor-canvas></app-tutor-canvas>
+      </div>
+
+      <aside class="context-column">
+        <app-context-panel></app-context-panel>
+        <app-memory-panel></app-memory-panel>
+      </aside>
+    </div>
+  </main>
+</div>

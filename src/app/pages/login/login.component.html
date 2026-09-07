@@ -1,0 +1,91 @@
+﻿<div class="auth-page">
+  <!-- Left Panel — Branding -->
+  <div class="auth-left">
+    <div class="auth-left__inner">
+      <div class="brand">
+        <span class="brand__icon">🎓</span>
+        <span class="brand__name">TutorAI</span>
+      </div>
+      <h1 class="auth-left__headline">
+        Apprends à<br>
+        <span class="gradient-text">ton rythme.</span>
+      </h1>
+      <p class="auth-left__sub">
+        Ton tuteur IA personnel, disponible 24h/24, adapté au système scolaire marocain.
+      </p>
+      <div class="features">
+        <div class="feature" *ngFor="let f of features">
+          <span class="feature__icon">{{ f.icon }}</span>
+          <span>{{ f.text }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="auth-left__glow"></div>
+  </div>
+
+  <!-- Right Panel — Form -->
+  <div class="auth-right">
+    <div class="auth-card">
+      <div class="auth-card__header">
+        <h2>Bienvenue ! 👋</h2>
+        <p>Connecte-toi à ton espace personnel</p>
+      </div>
+
+      <form class="auth-form" (ngSubmit)="onSubmit()" #loginForm="ngForm" novalidate>
+
+        <!-- Email -->
+        <div class="field">
+          <label for="email">Adresse email</label>
+          <div class="input-wrap">
+            <span class="input-icon">✉️</span>
+            <input
+              id="email"
+              type="email"
+              [(ngModel)]="email"
+              name="email"
+              placeholder="exemple@gmail.com"
+              autocomplete="email"
+              [class.has-error]="errorMsg()"
+            />
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="field">
+          <label for="password">Mot de passe</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔑</span>
+            <input
+              id="password"
+              [type]="showPassword ? 'text' : 'password'"
+              [(ngModel)]="password"
+              name="password"
+              placeholder="Au moins 6 caractères"
+              autocomplete="current-password"
+              [class.has-error]="errorMsg()"
+            />
+            <button type="button" class="toggle-pw" (click)="showPassword = !showPassword" tabindex="-1">
+              {{ showPassword ? '🙈' : '👁️' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Error -->
+        <div class="error-banner" *ngIf="errorMsg()">
+          <span>⚠️</span> {{ errorMsg() }}
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" class="btn-submit" [disabled]="!canSubmit" [class.loading]="loading()">
+          <span *ngIf="!loading()">Se connecter</span>
+          <span *ngIf="loading()" class="spinner">⏳ Connexion en cours...</span>
+        </button>
+      </form>
+
+      <div class="auth-card__footer">
+        Pas encore de compte ?
+        <a routerLink="/register" class="link">Créer un compte</a>
+      </div>
+    </div>
+  </div>
+</div>

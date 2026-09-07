@@ -1,0 +1,150 @@
+<div class="dashboard-root page-enter" *ngIf="profile$ | async as profile">
+  <!-- If profile exists and onboarding completed -->
+  <ng-container *ngIf="profile.onboardingCompleted && profile.firstName; else emptyState">
+    <!-- Top Greeting Section -->
+    <section class="hero-card surface">
+      <div class="hero-content">
+        <div class="hero-text">
+          <div class="hero-kicker">
+            <span class="badge badge--accent">AI Personal Tutor</span>
+            <span class="hero-date">Espace personnalisé</span>
+          </div>
+          <h1 class="hero-title">Bonjour, {{ profile.firstName }} 👋</h1>
+          <p class="hero-subtitle">{{ getSubtitle(profile) }}</p>
+        </div>
+        <div class="hero-action">
+          <a routerLink="/tutor" class="btn btn--primary btn--pill btn--lg">
+            <mat-icon>chat</mat-icon> Ouvrir mon tuteur IA
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Overview 4 Key Cards -->
+    <section class="overview-grid">
+      <!-- Card 1: Progression -->
+      <div class="stat-card">
+        <div class="stat-card__head">
+          <span class="stat-card__label">Progression globale</span>
+          <mat-icon class="stat-icon">trending_up</mat-icon>
+        </div>
+        <span class="stat-card__value">{{ getGlobalProgress(profile) }}</span>
+        <div class="progress-bar" *ngIf="profile.diagnosticResults" style="margin-top: 0.5rem;">
+          <div class="progress-bar__fill" [style.width.%]="profile.diagnosticResults.overallScore"></div>
+        </div>
+        <span class="stat-card__sub" *ngIf="!profile.diagnosticResults">Évaluée au fil de tes sessions</span>
+      </div>
+
+      <!-- Card 2: Matière actuelle -->
+      <div class="stat-card">
+        <div class="stat-card__head">
+          <span class="stat-card__label">Matière principale</span>
+          <mat-icon class="stat-icon">menu_book</mat-icon>
+        </div>
+        <span class="stat-card__value stat-card__value--text">{{ profile.subjects[0] || 'Général' }}</span>
+        <span class="stat-card__sub" *ngIf="profile.subjects.length > 1">+{{ profile.subjects.length - 1 }} autre(s) matière(s)</span>
+        <span class="stat-card__sub" *ngIf="profile.subjects.length <= 1">Matière active</span>
+      </div>
+
+      <!-- Card 3: Objectif -->
+      <div class="stat-card">
+        <div class="stat-card__head">
+          <span class="stat-card__label">Objectif actuel</span>
+          <mat-icon class="stat-icon">flag</mat-icon>
+        </div>
+        <span class="stat-card__value stat-card__value--text">{{ profile.objectives[0] || 'Progresser' }}</span>
+        <span class="stat-card__sub">Défini lors de l'onboarding</span>
+      </div>
+
+      <!-- Card 4: Prochaine action -->
+      <div class="stat-card">
+        <div class="stat-card__head">
+          <span class="stat-card__label">Prochaine étape</span>
+          <mat-icon class="stat-icon">auto_awesome</mat-icon>
+        </div>
+        <span class="stat-card__value stat-card__value--small">{{ getRecommendation(profile) }}</span>
+        <span class="stat-card__sub">Recommandé par ton tuteur</span>
+      </div>
+    </section>
+
+    <!-- Main Content Grid: Tutor Workspace Teaser & Profile Synthesis -->
+    <section class="main-grid">
+      <!-- Left: Tutor AI Active Workspace Card -->
+      <div class="surface tutor-spotlight">
+        <div class="spotlight-head">
+          <div class="spotlight-title">
+            <mat-icon class="spotlight-icon">smart_toy</mat-icon>
+            <div>
+              <h3>Ton tuteur IA est prêt</h3>
+              <p>Il a configuré tes sessions en fonction de tes besoins et préférences.</p>
+            </div>
+          </div>
+          <a routerLink="/tutor" class="btn btn--primary btn--pill">Reprendre la session</a>
+        </div>
+
+        <div class="spotlight-body" *ngIf="session$ | async as session">
+          <div class="dialogue-preview">
+            <div class="dialogue-avatar">
+              <mat-icon>smart_toy</mat-icon>
+            </div>
+            <div class="dialogue-bubble">
+              <p>
+                Bonjour {{ profile.firstName }} ! Je suis prêt pour travailler avec toi sur
+                <strong>{{ session.subject }}</strong>. Quel point souhaites-tu aborder ?
+              </p>
+              <div class="dialogue-actions">
+                <a routerLink="/tutor" class="btn btn--sm btn--secondary btn--pill">Poser une question</a>
+                <a routerLink="/exercises" class="btn btn--sm btn--ghost btn--pill" *ngIf="hasStyle(profile, 'Exercices')">Faire des exercices</a>
+                <a routerLink="/quiz" class="btn btn--sm btn--ghost btn--pill" *ngIf="hasStyle(profile, 'Quiz') || hasStyle(profile, 'Questions/réponses')">Lancer un quiz</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Real Profile Summary Card -->
+      <div class="surface profile-synthesis">
+        <div class="synth-head">
+          <mat-icon class="synth-icon">psychology</mat-icon>
+          <h3>Profil d'apprentissage</h3>
+        </div>
+
+        <div class="synth-list">
+          <div class="synth-item">
+            <span class="synth-label">Méthodes préférées</span>
+            <div class="tag-row">
+              <span *ngFor="let ls of profile.learningStyles" class="badge badge--accent">{{ ls }}</span>
+              <span *ngIf="!profile.learningStyles || profile.learningStyles.length === 0" class="muted">Non renseigné</span>
+            </div>
+          </div>
+
+          <div class="synth-item" *ngIf="profile.difficulties && profile.difficulties.length > 0">
+            <span class="synth-label">Points d'attention</span>
+            <div class="tag-row">
+              <span *ngFor="let d of profile.difficulties" class="badge badge--warning">{{ d }}</span>
+            </div>
+          </div>
+
+          <div class="synth-item" *ngIf="profile.diagnosticResults?.strengths as str">
+            <span class="synth-label">Points forts identifiés</span>
+            <div class="tag-row">
+              <span *ngFor="let s of str" class="badge badge--success">✓ {{ s }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </ng-container>
+
+  <!-- Empty State (No profile / Not onboarded) -->
+  <ng-template #emptyState>
+    <div class="empty-card surface">
+      <div class="empty-icon">🎓</div>
+      <h2>Ton espace d'apprentissage est prêt</h2>
+      <p>Commence par compléter ton profil pour que ton tuteur puisse personnaliser ton accompagnement.</p>
+      <a routerLink="/onboarding" class="btn btn--primary btn--pill btn--lg">
+        Configurer mon profil
+      </a>
+    </div>
+  </ng-template>
+</div>

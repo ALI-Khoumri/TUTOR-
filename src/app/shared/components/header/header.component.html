@@ -1,0 +1,39 @@
+<header class="app-header">
+  <div class="header-left">
+    <button class="menu-btn" type="button" aria-label="Ouvrir le menu" (click)="onMenuToggle()">
+      <mat-icon>menu</mat-icon>
+    </button>
+    <div class="brand-text">
+      <span class="brand-eyebrow">TutorAI</span>
+      <span class="brand-title">Espace d'apprentissage</span>
+    </div>
+  </div>
+
+  <div class="context-chip" *ngIf="session$ | async as session">
+    <mat-icon class="chip-icon">auto_awesome</mat-icon>
+    <span class="chip-body">
+      <span class="chip-label">En cours</span>
+      <strong>{{ session.topic }}</strong>
+    </span>
+  </div>
+
+  <span class="spacer"></span>
+
+  <div class="header-right">
+    <button class="icon-btn" type="button" aria-label="Notifications">
+      <mat-icon>notifications_none</mat-icon>
+    </button>
+
+    <div *ngIf="profile$ | async as profile" class="profile-capsule" routerLink="/profile">
+      <div class="avatar-initials">{{ getInitials(profile.firstName || profile.name) }}</div>
+      <div class="profile-info">
+        <span class="profile-name">{{ profile.firstName || profile.name }}</span>
+        <span class="profile-level">{{ profile.educationLevel }}</span>
+      </div>
+    </div>
+
+    <button class="logout-btn" type="button" aria-label="Se déconnecter" (click)="logout()" title="Se déconnecter">
+      <mat-icon>logout</mat-icon>
+    </button>
+  </div>
+</header>

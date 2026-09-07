@@ -1,0 +1,10 @@
+<div class="app-shell">
+  <app-header (menuToggle)="toggleSidebar()"></app-header>
+  <div class="shell-body">
+    <div class="sidebar-backdrop" [class.is-visible]="sidebarOpen" (click)="closeSidebar()"></div>
+    <app-sidebar [isOpen]="sidebarOpen" (closed)="closeSidebar()"></app-sidebar>
+    <main class="content-area page-enter">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>

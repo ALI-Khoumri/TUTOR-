@@ -1,0 +1,32 @@
+<aside class="sidebar" [class.is-open]="isOpen" aria-label="Navigation principale">
+  <div class="sidebar-card">
+    <div class="sidebar-brand">
+      <span class="brand-logo">🎓</span>
+      <div class="brand-info">
+        <span class="brand-name">TutorAI</span>
+        <span class="brand-tagline">AI Personal Tutor</span>
+      </div>
+    </div>
+
+    <nav role="navigation" class="nav-list">
+      <a
+        *ngFor="let item of navItems"
+        [routerLink]="item.route"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        class="nav-item"
+        (click)="onLinkClick()"
+      >
+        <span class="icon-wrap"><mat-icon aria-hidden="true">{{ item.icon }}</mat-icon></span>
+        <span class="label">{{ item.label }}</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="footer-badge">
+        <mat-icon>workspace_premium</mat-icon>
+        <span>Espace d'apprentissage</span>
+      </div>
+    </div>
+  </div>
+</aside>

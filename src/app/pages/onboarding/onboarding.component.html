@@ -1,0 +1,424 @@
+<section class="onboarding-shell page-enter">
+  <!-- Left: Hero presentation -->
+  <div class="onboarding-hero">
+    <div class="brand-badge">
+      <span class="brand-icon">🎓</span>
+      <span>TUTORAI</span>
+    </div>
+
+    <!-- Dynamic Titles -->
+    <h1 *ngIf="step === 0">
+      <ng-container *ngIf="firstName">
+        Ravi de t'accueillir,<br><span class="accent-text">{{ firstName }} 👋</span>
+      </ng-container>
+      <ng-container *ngIf="!firstName">
+        Bienvenue sur<br><span class="accent-text">TutorAI 👋</span>
+      </ng-container>
+    </h1>
+    <h1 *ngIf="step === 1">Comment<br>t'appelles-tu ?</h1>
+    <h1 *ngIf="step === 2">Quel âge<br>as-tu ?</h1>
+    <h1 *ngIf="step === 3">Quel est ton<br>niveau d'études ?</h1>
+    <h1 *ngIf="step === 4">Ta filière &<br>formation</h1>
+    <h1 *ngIf="step === 5">Quelles matières<br>travailler ?</h1>
+    <h1 *ngIf="step === 6">Pourquoi utiliser<br>TutorAI ?</h1>
+    <h1 *ngIf="step === 7">Rencontres-tu des<br>difficultés ?</h1>
+    <h1 *ngIf="step === 8">Comment préfères-tu<br>apprendre ?</h1>
+    <h1 *ngIf="step === 9">Diagnostic<br>de niveau</h1>
+    <h1 *ngIf="step === 10">Ton profil<br>d'apprentissage</h1>
+
+    <!-- Dynamic Subtitles -->
+    <p class="hero-lead" *ngIf="step === 0">Pour personnaliser ton accompagnement, configurons ton profil scolaire.</p>
+    <p class="hero-lead" *ngIf="step === 1">Indique ton prénom pour que ton tuteur sache comment s'adresser à toi.</p>
+    <p class="hero-lead" *ngIf="step === 2">L'âge permet au tuteur d'adapter le ton et le niveau de pédagogie.</p>
+    <p class="hero-lead" *ngIf="step === 3">Sélectionne ta classe ou ton niveau actuel.</p>
+    <p class="hero-lead" *ngIf="step === 4">Précise ton domaine pour que le tuteur cible les compétences exactes de ta formation.</p>
+    <p class="hero-lead" *ngIf="step === 5">Choisis une ou plusieurs matières que tu souhaites approfondir.</p>
+    <p class="hero-lead" *ngIf="step === 6">Sélectionne tes objectifs principaux pour orienter ton accompagnement.</p>
+    <p class="hero-lead" *ngIf="step === 7">Identifier tes difficultés dès maintenant aide le tuteur à cibler la cause exacte.</p>
+    <p class="hero-lead" *ngIf="step === 8">Indique tes méthodes préférées et le temps quotidien que tu souhaites y consacrer.</p>
+    <p class="hero-lead" *ngIf="step === 9">Réponds à ces quelques questions adaptées à ton profil pour évaluer ton niveau de départ.</p>
+    <p class="hero-lead" *ngIf="step === 10">Voici l'analyse générée par ton tuteur basée sur tes réponses réelles.</p>
+  </div>
+
+  <!-- Right: Interactive Card -->
+  <div class="onboarding-card surface">
+    <!-- Progress Indicator -->
+    <div class="step-bar" *ngIf="step > 0">
+      <span class="step-indicator">Étape {{ currentDisplayStep }}/{{ effectiveTotalSteps }}</span>
+      <div class="step-track">
+        <div class="step-fill" [style.width.%]="progressPercent"></div>
+      </div>
+    </div>
+
+    <!-- ÉTAPE 0 : Bienvenue -->
+    <div class="step-panel" *ngIf="step === 0">
+      <div class="welcome-visual">
+        <div class="welcome-icon">🤖</div>
+        <p class="welcome-text">
+          <ng-container *ngIf="firstName">
+            Bienvenue <strong>{{ firstName }}</strong> sur TutorAI ! Ton tuteur IA personnalisé va adapter son accompagnement et ses explications à ton niveau réel.
+          </ng-container>
+          <ng-container *ngIf="!firstName">
+            Bienvenue sur TutorAI ! Ton tuteur IA personnalisé va construire un accompagnement sur-mesure à partir de tes vraies réponses.
+          </ng-container>
+        </p>
+      </div>
+
+      <div class="welcome-user-card" *ngIf="firstName">
+        <div class="user-chip">
+          <span class="user-chip__avatar">👤</span>
+          <div class="user-chip__info">
+            <span class="user-chip__label">Compte élève</span>
+            <span class="user-chip__name">{{ firstName }}</span>
+          </div>
+        </div>
+        <button type="button" class="btn-change-name" (click)="step = 1" title="Modifier mon prénom">
+          Modifier
+        </button>
+      </div>
+
+      <div class="step-actions">
+        <button class="btn btn--primary btn--pill btn--lg" (click)="start()">Commencer</button>
+      </div>
+    </div>
+
+    <!-- ÉTAPE 1 : Prénom -->
+    <div class="step-panel" *ngIf="step === 1">
+      <div class="single-input-wrap">
+        <label for="firstNameInput" class="input-label">Ton prénom</label>
+        <input
+          id="firstNameInput"
+          type="text"
+          class="text-input"
+          [(ngModel)]="firstName"
+          placeholder="Ex: Sarah, Thomas..."
+          (keydown.enter)="canProceed && next()"
+          autocomplete="given-name"
+          autofocus
+        />
+      </div>
+      <div class="step-actions">
+        <button class="btn btn--ghost btn--pill" (click)="prev()">Retour</button>
+        <button class="btn btn--primary btn--pill" [disabled]="!canProceed" (click)="next()">Continuer</button>
+      </div>
+    </div>
+
+    <!-- ÉTAPE 2 : Âge -->
+    <div class="step-panel" *ngIf="step === 2">
+      <div class="single-input-wrap">
+        <label for="ageInput" class="input-label">Ton âge (années)</label>
+        <input
+          id="ageInput"
+          type="number"
+          class="text-input"
+          [(ngModel)]="age"
+          min="5"
+          max="99"
+          placeholder="Ex: 19"
+          (keydown.enter)="canProceed && next()"
+          autofocus
+        />
+      </div>
+      <div class="step-actions">
+        <button class="btn btn--ghost btn--pill" (click)="prev()">Retour</button>
+        <button class="btn btn--primary btn--pill" [disabled]="!canProceed" (click)="next()">Continuer</button>
+      </div>
+    </div>
+
+    <!-- ÉTAPE 3 : Niveau d'études -->
+    <div class="step-panel" *ngIf="step === 3">
+      <p class="step-subtitle">Sélectionne ton niveau scolaire <span *ngIf="age" style="color: var(--accent); font-weight: 600;">(adapté à ton âge de {{ age }} ans)</span> :</p>
+      <div class="chip-grid chip-grid--vertical">
+        <button
+          *ngFor="let lvl of filteredEducationLevels"
+          type="button"
+          class="chip chip--large"
+          [class.is-active]="educationLevel === lvl"
+          (click)="educationLevel = lvl; persistDraft()"
+        >
+          {{ lvl }}
+        </button>
+      </div>
+      <div class="step-actions">
+        <button class="btn btn--ghost btn--pill" (click)="prev()">Retour</button>
+        <button class="btn btn--primary btn--pill" [disabled]="!canProceed" (click)="next()">Continuer</button>
+      </div>
+    </div>
+
+    <!-- ÉTAPE 4 : Filière & Formation (Adaptatif) -->
+    <div class="step-panel" *ngIf="step === 4">
+      <!-- Si Supérieur -->
+      <div *ngIf="schoolCategory === 'supérieur'" class="form-grid">
+        <div class="form-group form-group--full">
+          <label>Quelle est ta filière ?</label>
+          <div class="chip-grid">
+            <button
+              *ngFor="let f of fields"
+              type="button"
+              class="chip"
+              [class.is-active]="fieldOfStudy === f"
+              (click)="fieldOfStudy = f; persistDraft()"
+            >
+              {{ f }}
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Quelle est ton année d'étude ?</label>
+          <select [(ngModel)]="studyYear" (change)="persistDraft()">
+            <option value="" disabled>Sélectionne ton année</option>
+            <option *ngFor="let y of filteredStudyYears" [value]="y">{{ y }}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="schoolInput">Dans quel établissement étudies-tu ? <span class="optional">(facultatif)</span></label>
+          <input
+            id="schoolInput"
+            type="text"
+            [(ngModel)]="school"
+            placeholder="Ex : Université, IUT, École d'ingénieurs..."
+            (input)="persistDraft()"
+          />
+        </div>
+      </div>
+
+      <!-- Si Collège : pas de branche particulière -->
+      <div *ngIf="schoolCategory === 'collège'" class="form-grid">
+        <div class="form-group form-group--full">
+          <div class="info-box">
+            <span>📚</span>
+            <p>Au collège marocain, le programme est commun à tous les élèves (pas de filière spécifique). Tu choisiras tes matières à travailler à l'étape suivante.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Si Lycée qualifiant : branche selon le niveau Bac -->
+      <div *ngIf="schoolCategory === 'lycée' && parcoursOptions.length > 0" class="form-grid">
+        <div class="form-group form-group--full">
+          <label>
+            Quelle est ta branche / filière ?
+            <span class="optional"> ({{ educationLevel }})</span>
+          </label>
+          <div class="chip-grid">
+            <button
+              *ngFor="let p of parcoursOptions"
+              type="button"
+              class="chip"
+              [class.is-active]="parcours === p"
+              (click)="parcours = p; persistDraft()"
+            >
+              {{ p }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Si Lycée Tronc commun : orientation générale -->
+      <div *ngIf="schoolCategory === 'lycée' && parcoursOptions.length === 0" class="form-grid">
+        <div class="form-group form-group--full">
+          <div class="info-box">
+            <span>🎯</span>
+            <p>Toutes les matières du tronc commun seront disponibles. Tu pourras sélectionner celles que tu veux travailler.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-actions">
+        <button class="btn btn--ghost btn--pill" (click)="prev()">Retour</button>
+        <button class="btn btn--primary btn--pill" [disabled]="!canProceed" (click)="next()">Continuer</button>
+      </div>
+    </div>
+
+    <!-- ÉTAPE 5 : Matières -->
+    <div class="step-panel" *ngIf="step === 5">
+      <p class="step-subtitle">Quelles matières veux-tu travailler avec ton tuteur ?</p>
+      <div class="chip-grid">
+        <button
+          *ngFor="let s of availableSubjects"
+          type="button"
+          class="chip"
+          [class.is-active]="isSelected(selectedSubjects, s)"
+          (click)="toggleItem(selectedSubjects, s)"
+        >
+          {{ s }}
+        </button>
+      </div>
+      <div class="step-actions">
+        <button class="btn btn--ghost btn--pill" (click)="prev()">Retour</button>
+        <button class="btn btn--primary btn--pill" [disabled]="!canProceed" (click)="next()">Continuer</button>
+      </div>
+    </div>
+
+    <!-- ÉTAPE 6 : Objectifs -->
+    <div class="step-panel" *ngIf="step === 6">
+      <p class="step-subtitle">Pourquoi veux-tu utiliser TutorAI ?</p>
+      <div class="chip-grid">
+        <button
+          *ngFor="let o of allObjectives"
+          type="button"
+          class="chip"
+          [class.is-active]="isSelected(selectedObjectives, o)"
+          (click)="toggleItem(selectedObjectives, o)"
+        >
+          {{ o }}
+        </button>
+      </div>
+      <div class="step-actions">
+        <button class="btn btn--ghost btn--pill" (click)="prev()">Retour</button>
+        <button class="btn btn--primary btn--pill" [disabled]="!canProceed" (click)="next()">Continuer</button>
+      </div>
+    </div>
+
+    <!-- ÉTAPE 7 : Difficultés -->
+    <div class="step-panel" *ngIf="step === 7">
+      <p class="step-subtitle">Rencontres-tu actuellement des difficultés ?</p>
+      <div class="chip-grid">
+        <button
+          *ngFor="let d of allDifficulties"
+          type="button"
+          class="chip"
+          [class.is-active]="isSelected(selectedDifficulties, d)"
+          (click)="toggleItem(selectedDifficulties, d)"
+        >
+          {{ d }}
+        </button>
+      </div>
+
+      <div class="form-group form-group--full" style="margin-top: 1.25rem;">
+        <label for="diffText">Explique-nous avec tes propres mots ce qui te pose problème <span class="optional">(facultatif)</span></label>
+        <textarea
+          id="diffText"
+          rows="3"
+          [(ngModel)]="difficultyExplanation"
+          placeholder="Ex: J'ai compris la théorie du cours mais je bloque dès qu'il faut appliquer la méthode dans les exercices complexes..."
+          (input)="persistDraft()"
+        ></textarea>
+      </div>
+
+      <div class="step-actions">
+        <button class="btn btn--ghost btn--pill" (click)="prev()">Retour</button>
+        <button class="btn btn--primary btn--pill" [disabled]="!canProceed" (click)="next()">Continuer</button>
+      </div>
+    </div>
+
+    <!-- ÉTAPE 8 : Préférences d'apprentissage -->
+    <div class="step-panel" *ngIf="step === 8">
+      <p class="step-subtitle">Comment préfères-tu apprendre ?</p>
+      <div class="chip-grid">
+        <button
+          *ngFor="let ls of allLearningStyles"
+          type="button"
+          class="chip"
+          [class.is-active]="isSelected(selectedLearningStyles, ls)"
+          (click)="toggleItem(selectedLearningStyles, ls)"
+        >
+          {{ ls }}
+        </button>
+      </div>
+
+      <div class="form-group form-group--full" style="margin-top: 1.25rem;">
+        <label>Combien de temps peux-tu consacrer à tes études par jour ?</label>
+        <div class="chip-grid">
+          <button
+            *ngFor="let t of studyTimeOptions"
+            type="button"
+            class="chip"
+            [class.is-active]="studyTime === t"
+            (click)="studyTime = t; persistDraft()"
+          >
+            {{ t }}
+          </button>
+        </div>
+      </div>
+
+      <div class="step-actions">
+        <button class="btn btn--ghost btn--pill" (click)="prev()">Retour</button>
+        <button class="btn btn--primary btn--pill" [disabled]="!canProceed" (click)="next()">Lancer le diagnostic</button>
+      </div>
+    </div>
+
+    <!-- ÉTAPE 9 : Diagnostic initial -->
+    <div class="step-panel" *ngIf="step === 9">
+      <p class="step-subtitle">Maintenant, faisons un petit diagnostic pour mieux comprendre ton niveau.</p>
+      <p class="step-hint">Ces questions sont personnalisées selon ton profil et les matières que tu as choisies.</p>
+
+      <div class="diagnostic-list">
+        <div *ngFor="let q of diagnosticQuestions; let qi = index" class="diagnostic-question">
+          <div class="dq-head">
+            <span class="dq-subject-badge badge badge--accent">{{ q.subject }}</span>
+            <span class="dq-index">Question {{ qi + 1 }}/{{ diagnosticQuestions.length }}</span>
+          </div>
+          <div class="dq-text">{{ q.question }}</div>
+          <div class="dq-options">
+            <button
+              *ngFor="let opt of q.options; let oi = index"
+              type="button"
+              class="chip chip--diagnostic"
+              [class.is-active]="diagnosticAnswers[qi] === oi"
+              (click)="selectDiagnosticAnswer(qi, oi)"
+            >
+              {{ opt }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-actions">
+        <button class="btn btn--ghost btn--pill" (click)="prev()">Retour</button>
+        <button class="btn btn--primary btn--pill" [disabled]="!canProceed" (click)="submitDiagnostic()">Voir mon bilan</button>
+      </div>
+    </div>
+
+    <!-- ÉTAPE 10 : Bilan & Profil d'apprentissage -->
+    <div class="step-panel" *ngIf="step === 10 && diagnosticResult">
+      <div class="result-header">
+        <div class="result-score-ring">
+          <span class="score-value">{{ diagnosticResult.overallScore }}%</span>
+          <span class="score-label">Niveau de départ</span>
+        </div>
+      </div>
+
+      <div class="result-grid">
+        <div *ngFor="let entry of diagnosticResult.subjectScores | keyvalue" class="result-subject">
+          <div class="rs-header">
+            <span class="rs-name">{{ entry.key }}</span>
+            <span class="rs-pct">{{ entry.value }}%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-bar__fill" [style.width.%]="entry.value"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="result-section" *ngIf="diagnosticResult.strengths.length > 0">
+        <div class="rs-title">Points forts</div>
+        <div class="rs-tags">
+          <span *ngFor="let s of diagnosticResult.strengths" class="badge badge--success">✓ {{ s }}</span>
+        </div>
+      </div>
+
+      <div class="result-section" *ngIf="diagnosticResult.weaknesses.length > 0">
+        <div class="rs-title">Points à renforcer</div>
+        <div class="rs-tags">
+          <span *ngFor="let w of diagnosticResult.weaknesses" class="badge badge--warning">⚡ {{ w }}</span>
+        </div>
+      </div>
+
+      <div class="result-section result-reco">
+        <div class="rs-title">Ce que ton tuteur te recommande</div>
+        <div class="reco-list">
+          <div *ngFor="let r of diagnosticResult.recommendations; let ri = index" class="reco-item">
+            <span class="reco-num">{{ ri + 1 }}</span>
+            <span>{{ r }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-actions">
+        <button class="btn btn--primary btn--pill btn--lg" (click)="finishOnboarding()">Accéder à mon espace</button>
+      </div>
+    </div>
+  </div>
+</section>
