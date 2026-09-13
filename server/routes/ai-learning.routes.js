@@ -3,6 +3,7 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { getPool } = require('../database/db');
 const {
+  isAuthorizedSchoolSubject,
   generateAiQuiz,
   generateAiExercise,
   evaluateStudentExercise,
@@ -16,16 +17,36 @@ function getStudentId(req) {
 async function getStudentContext(studentId) {
   try {
     const pool = getPool();
-    const [studentRows] = await pool.query('SELECT * FROM students WHERE id = ?', [studentId]);
-    const student = studentRows[0] || null;
+    let validId = studentId;
+    let [studentRows] = await pool.query('SELECT * FROM students WHERE id = ?', [studentId]);
+    let student = studentRows[0] || null;
 
-    const [learningProfileRows] = await pool.query('SELECT * FROM learning_profiles WHERE student_id = ?', [studentId]);
+    if (!student && studentId) {
+      // Check if studentId is a user id
+      const [uRows] = await pool.query('SELECT student_id FROM users WHERE id = ?', [studentId]);
+      if (uRows.length > 0 && uRows[0].student_id) {
+        validId = uRows[0].student_id;
+        const [sRows] = await pool.query('SELECT * FROM students WHERE id = ?', [validId]);
+        student = sRows[0] || null;
+      }
+    }
+
+    if (!student) {
+      // Fallback to active student with onboarding completed or latest created student
+      const [any] = await pool.query('SELECT * FROM students ORDER BY onboarding_completed DESC, created_at DESC LIMIT 1');
+      if (any.length > 0) {
+        student = any[0];
+        validId = student.id;
+      }
+    }
+
+    const [learningProfileRows] = await pool.query('SELECT * FROM learning_profiles WHERE student_id = ?', [validId]);
     const learningProfile = learningProfileRows[0] || null;
 
-    const [diffRows] = await pool.query('SELECT difficulty FROM difficulties WHERE student_id = ?', [studentId]);
+    const [diffRows] = await pool.query('SELECT difficulty FROM difficulties WHERE student_id = ?', [validId]);
     const difficulties = diffRows.map(d => d.difficulty);
 
-    const [diagRows] = await pool.query('SELECT * FROM diagnostic_results WHERE student_id = ? ORDER BY created_at DESC LIMIT 1', [studentId]);
+    const [diagRows] = await pool.query('SELECT * FROM diagnostic_results WHERE student_id = ? ORDER BY created_at DESC LIMIT 1', [validId]);
     const diagnostic = diagRows[0] || null;
 
     return {
@@ -160,18 +181,14 @@ async function updateSubjectProgress(pool, studentId, subjectName, { quizComplet
     if (quizCompleted) quizzes += 1;
     if (exerciseCompleted) exercises += 1;
 
-    if (quizScore !== undefined) {
-      currentScore = currentScore === 0 ? quizScore : Math.round((currentScore * 0.4) + (quizScore * 0.6));
-    }
-    if (exerciseScore !== undefined) {
-      currentScore = currentScore === 0 ? exerciseScore : Math.round((currentScore * 0.5) + (exerciseScore * 0.5));
-    }
-
     const total = quizzes + exercises;
-    let mastery = 'beginner';
-    if (total >= 6 && currentScore >= 75) mastery = 'advanced';
-    else if (total >= 2 && currentScore >= 50) mastery = 'intermediate';
-    else if (total >= 1) mastery = 'developing';
+    currentScore = Math.min(100, (exercises * 15) + (quizzes * 20));
+
+    let mastery = 'not_started';
+    if (currentScore >= 80) mastery = 'mastered';
+    else if (currentScore >= 60) mastery = 'advanced';
+    else if (currentScore >= 40) mastery = 'intermediate';
+    else if (currentScore > 0) mastery = 'developing';
 
     if (validStudentId) {
       if (progRows.length > 0) {
@@ -195,7 +212,6 @@ async function updateSubjectProgress(pool, studentId, subjectName, { quizComplet
   if (quizCompleted && quizzes === 0) quizzes = 1;
   if (exerciseCompleted && exercises === 0) exercises = 1;
   const total = quizzes + exercises;
-  if (currentScore === 0) currentScore = quizScore || exerciseScore || 75;
 
   let newDifficulty = 'Débutant';
   let levelIndex = 1;
@@ -249,7 +265,13 @@ router.post('/quiz/generate', async (req, res) => {
     const pool = getPool();
     const { subject, topic, level, count, avoidQuestions, difficulty } = req.body;
 
-    const targetSubject = subject || 'Général';
+    if (subject && !isAuthorizedSchoolSubject(subject)) {
+      return res.status(400).json({
+        error: `La matière "${subject}" n'est pas autorisée. La génération de quiz est strictement réservée aux matières officielles du Primaire et du Collège (Mathématiques, Français, Arabe, Éducation islamique, Anglais, Physique-Chimie, SVT/Éveil scientifique, Histoire-Géo, Informatique, EPS, Méthodologie).`
+      });
+    }
+
+    const targetSubject = subject || 'Mathématiques';
     let targetDifficulty = difficulty;
     let adaptiveInfo = null;
 
@@ -261,9 +283,9 @@ router.post('/quiz/generate', async (req, res) => {
     const result = await generateAiQuiz({
       subject: targetSubject,
       topic,
-      level: level || context.student?.education_level,
+      level: level || context.student?.education_level || '1ère année primaire',
       difficulty: targetDifficulty,
-      count: count || 4,
+      count: parseInt(count, 10) || 10,
       avoidQuestions: Array.isArray(avoidQuestions) ? avoidQuestions : []
     }, context);
 
@@ -289,6 +311,12 @@ router.post('/quiz/feedback', async (req, res) => {
     const context = await getStudentContext(studentId);
     const pool = getPool();
     const { subject, score, total, userAnswers } = req.body;
+
+    if (subject && !isAuthorizedSchoolSubject(subject)) {
+      return res.status(400).json({
+        error: `La matière "${subject}" n'est pas autorisée.`
+      });
+    }
 
     const result = await generateQuizFeedback({
       subject,
@@ -322,9 +350,16 @@ router.post('/exercises/generate', async (req, res) => {
     const studentId = getStudentId(req);
     const context = await getStudentContext(studentId);
     const pool = getPool();
-    const { subject, topic, difficulty, avoidIds } = req.body;
+    const { subject, topic, level, difficulty, avoidIds } = req.body;
 
-    const targetSubject = subject || 'Général';
+    if (subject && !isAuthorizedSchoolSubject(subject)) {
+      return res.status(400).json({
+        error: `La matière "${subject}" n'est pas autorisée. La génération d'exercices est strictement réservée aux matières officielles du Primaire et du Collège (Mathématiques, Français, Arabe, Éducation islamique, Anglais, Physique-Chimie, SVT/Éveil scientifique, Histoire-Géo, Informatique, EPS, Méthodologie).`
+      });
+    }
+
+    const targetSubject = subject || 'Mathématiques';
+    const resolvedLevel = level || context.student?.education_level || '1ère année primaire';
     let targetDifficulty = difficulty;
     let adaptiveInfo = null;
 
@@ -336,6 +371,7 @@ router.post('/exercises/generate', async (req, res) => {
     const result = await generateAiExercise({
       subject: targetSubject,
       topic,
+      level: resolvedLevel,
       difficulty: targetDifficulty,
       avoidIds
     }, context);
@@ -360,15 +396,22 @@ router.post('/exercises/evaluate', async (req, res) => {
     const studentId = getStudentId(req);
     const context = await getStudentContext(studentId);
     const pool = getPool();
-    const { exercise, studentDraft } = req.body;
+    const { exercise, studentDraft, questionAnswers } = req.body;
 
     if (!exercise) {
       return res.status(400).json({ error: 'Exercise details required.' });
     }
 
+    if (exercise.subject && !isAuthorizedSchoolSubject(exercise.subject)) {
+      return res.status(400).json({
+        error: `La matière "${exercise.subject}" n'est pas autorisée.`
+      });
+    }
+
     const result = await evaluateStudentExercise({
       exercise,
-      studentDraft
+      studentDraft,
+      questionAnswers
     }, context);
 
     let progressUpdate = null;
@@ -386,6 +429,72 @@ router.post('/exercises/evaluate', async (req, res) => {
   } catch (error) {
     console.error('[API /api/ai/exercises/evaluate] Error:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/ai/courses/pdf/:subject
+ * Streams a real, valid PDF course document for the requested subject.
+ */
+router.get('/courses/pdf/:subject', (req, res) => {
+  try {
+    const subject = decodeURIComponent(req.params.subject || 'Mathématiques');
+    if (!isAuthorizedSchoolSubject(subject)) {
+      return res.status(400).send(`La matière "${subject}" n'est pas autorisée.`);
+    }
+    const PDFDocument = require('pdfkit');
+    const doc = new PDFDocument({ margin: 45, size: 'A4' });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="cours-${encodeURIComponent(subject)}.pdf"`);
+
+    doc.pipe(res);
+
+    doc.rect(45, 45, 505, 80).fill('#1e3a8a');
+    doc.fillColor('#ffffff').fontSize(20).font('Helvetica-Bold')
+       .text('TutorAI — Manuel & Polycopié de Cours', 60, 62);
+    doc.fontSize(13).font('Helvetica')
+       .text(`${subject} • Support Académique Officiel`, 60, 95);
+
+    doc.moveDown(4);
+    doc.fillColor('#2563eb').fontSize(16).font('Helvetica-Bold')
+       .text(`Cours Complet : ${subject}`);
+    doc.fillColor('#64748b').fontSize(10).font('Helvetica')
+       .text('Document officiel certifié • TutorAI Learning System');
+    doc.moveDown(1);
+
+    doc.fillColor('#1e293b').fontSize(12).font('Helvetica-Bold')
+       .text('1. Vue d\'ensemble et objectifs pédagogiques');
+    doc.fillColor('#334155').fontSize(10).font('Helvetica')
+       .text(`Ce guide et mémo scolaire de ${subject} présente les notions clés, les explications simples et les méthodes pas-à-pas pour réussir ses devoirs et progresser en confiance.`, { align: 'justify', lineGap: 3 });
+    doc.moveDown(1);
+
+    doc.fillColor('#1e293b').fontSize(12).font('Helvetica-Bold')
+       .text('2. Points clés et notions fondamentales');
+    doc.font('Helvetica').fontSize(10).fillColor('#334155')
+       .text(`•  Maîtrise des définitions opératoires et du vocabulaire technique en ${subject}.`, { indent: 10 })
+       .text(`•  Structure générale et principes directeurs de la discipline.`, { indent: 10 })
+       .text(`•  Démarche déductive et application systématique aux cas pratiques d'examen.`, { indent: 10 });
+    doc.moveDown(1);
+
+    doc.fillColor('#1e293b').fontSize(12).font('Helvetica-Bold')
+       .text('3. Règle méthodologique fondamentale');
+    doc.font('Helvetica-Oblique').fontSize(10).fillColor('#1d4ed8')
+       .text(`Toujours vérifier les prémisses et justifier chaque conclusion par un texte, une formule ou une démonstration validée.`, { indent: 10 });
+    doc.moveDown(1);
+
+    doc.fillColor('#b91c1c').fontSize(12).font('Helvetica-Bold')
+       .text('4. Pièges d\'examen fréquents');
+    doc.font('Helvetica').fontSize(10).fillColor('#991b1b')
+       .text('!  Éviter la récitation par cœur sans analyse contextuelle.', { indent: 10 })
+       .text('!  Soigner la rédaction et la justification de chaque étape du raisonnement.', { indent: 10 });
+
+    doc.fontSize(8).fillColor('#94a3b8').text('Document édité par TutorAI — Conforme aux programmes officiels', 45, 800, { align: 'center' });
+
+    doc.end();
+  } catch (err) {
+    console.error('[API /courses/pdf] Error:', err);
+    res.status(500).send('Erreur lors de la génération du PDF.');
   }
 });
 

@@ -1,63 +1,53 @@
-export type AgeGroup = '6-12' | '13-16' | '17-20' | '21-30' | '31+';
+export type AgeGroup = '6-8' | '9-11' | '12-13' | '14-15';
 
-// ─── Système scolaire MAROCAIN ─────────────────────────────────────────────
+// ─── Système scolaire MAROCAIN — Cycles Primaire et Collège (6 à 15 ans) ───
 export type EducationLevel =
-  // Primaire (6 ans → 12 ans)
+  // Primaire (6 ans → 11/12 ans)
   | '1ère année primaire' | '2ème année primaire' | '3ème année primaire'
   | '4ème année primaire' | '5ème année primaire' | '6ème année primaire'
   // Collège (12 ans → 15 ans)
-  | '1ère année collège' | '2ème année collège' | '3ème année collège'
-  // Lycée qualifiant (15 ans → 18 ans)
-  | 'Tronc commun' | '1ère année Bac' | '2ème année Bac'
-  // Supérieur
-  | 'Université / Grandes Écoles';
+  | '1ère année collège' | '2ème année collège' | '3ème année collège';
 
 export type AnyEducationLevel = EducationLevel | string;
 
-export function getSchoolCategory(level: AnyEducationLevel): 'primaire' | 'collège' | 'lycée' | 'supérieur' | 'unknown' {
+export function getSchoolCategory(level: AnyEducationLevel): 'primaire' | 'collège' | 'unknown' {
   const primary = ['1ère année primaire', '2ème année primaire', '3ème année primaire', '4ème année primaire', '5ème année primaire', '6ème année primaire'];
   const middle  = ['1ère année collège', '2ème année collège', '3ème année collège'];
-  const high    = ['Tronc commun', '1ère année Bac', '2ème année Bac'];
-  const higher  = ['Université / Grandes Écoles'];
 
   if (primary.includes(level)) return 'primaire';
   if (middle.includes(level))  return 'collège';
-  if (high.includes(level))    return 'lycée';
-  if (higher.includes(level))  return 'supérieur';
   return 'unknown';
 }
 
 /**
- * Returns education levels available for a given age — Système MAROCAIN.
+ * Returns education levels available for a child / teen aged 6 to 15.
  */
 export function getEducationLevelsForAge(age: number | null): EducationLevel[] {
-  if (!age || age < 6) return ['1ère année primaire'];
-
-  if (age === 6)  return ['1ère année primaire', '2ème année primaire'];
-  if (age === 7)  return ['1ère année primaire', '2ème année primaire', '3ème année primaire'];
-  if (age === 8)  return ['2ème année primaire', '3ème année primaire', '4ème année primaire'];
-  if (age === 9)  return ['3ème année primaire', '4ème année primaire', '5ème année primaire'];
-  if (age === 10) return ['4ème année primaire', '5ème année primaire', '6ème année primaire'];
-  if (age === 11) return ['5ème année primaire', '6ème année primaire', '1ère année collège'];
-  if (age === 12) return ['6ème année primaire', '1ère année collège', '2ème année collège'];
-  if (age === 13) return ['1ère année collège', '2ème année collège', '3ème année collège'];
-  if (age === 14) return ['2ème année collège', '3ème année collège', 'Tronc commun'];
-  if (age === 15) return ['3ème année collège', 'Tronc commun', '1ère année Bac'];
-  if (age === 16) return ['Tronc commun', '1ère année Bac', '2ème année Bac'];
-  if (age === 17) return ['1ère année Bac', '2ème année Bac', 'Université / Grandes Écoles'];
-  // 18 ans et +
-  return ['2ème année Bac', 'Université / Grandes Écoles'];
+  if (!age || age <= 6) return ['1ère année primaire'];
+  if (age === 7)  return ['1ère année primaire', '2ème année primaire'];
+  if (age === 8)  return ['2ème année primaire', '3ème année primaire'];
+  if (age === 9)  return ['3ème année primaire', '4ème année primaire'];
+  if (age === 10) return ['4ème année primaire', '5ème année primaire'];
+  if (age === 11) return ['5ème année primaire', '6ème année primaire'];
+  if (age === 12) return ['6ème année primaire', '1ère année collège'];
+  if (age === 13) return ['1ère année collège', '2ème année collège'];
+  if (age === 14) return ['2ème année collège', '3ème année collège'];
+  // 15 ans
+  return ['3ème année collège'];
 }
 
 /**
- * Returns available higher-education years for the student's age — Système MAROCAIN.
+ * Returns helper indicating whether age is in the intended 6-15 range.
+ */
+export function isAgeInTargetRange(age: number | null): boolean {
+  return typeof age === 'number' && age >= 6 && age <= 15;
+}
+
+/**
+ * Returns available study years helper (kept for interface compatibility).
  */
 export function getStudyYearsForAge(age: number | null): string[] {
-  if (!age || age < 17) return ['1ère année'];
-  if (age <= 18) return ['1ère année', '2ème année'];
-  if (age <= 20) return ['1ère année', '2ème année', '3ème année (Licence)'];
-  if (age === 21) return ['1ère année', '2ème année', '3ème année (Licence)', 'Master 1'];
-  return ['1ère année', '2ème année', '3ème année (Licence)', 'Master 1', 'Master 2', 'Doctorat'];
+  return [];
 }
 
 export function isAgeEducationLevelValid(age: number | null, level: AnyEducationLevel): boolean {

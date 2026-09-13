@@ -140,7 +140,7 @@ router.get('/me', async (req, res) => {
 
     const pool = getPool();
     const [rows] = await pool.query(
-      'SELECT u.id, u.email, u.student_id, COALESCE(s.first_name, u.first_name, "") AS first_name FROM users u LEFT JOIN students s ON u.student_id = s.id WHERE u.id = ?',
+      'SELECT u.id, u.email, u.student_id, COALESCE(s.first_name, u.first_name, "") AS first_name FROM users u LEFT JOIN students s ON (u.student_id = s.id OR u.id = s.id) WHERE u.id = ?',
       [decoded.id]
     );
 
@@ -149,6 +149,21 @@ router.get('/me', async (req, res) => {
     }
 
     const user = rows[0];
+
+    // Auto-repair if student_id is null but student profile exists
+    if (!user.student_id) {
+      const [studentRows] = await pool.query(
+        'SELECT id, first_name FROM students WHERE id = ? AND onboarding_completed = 1',
+        [user.id]
+      );
+      if (studentRows.length > 0) {
+        user.student_id = studentRows[0].id;
+        user.first_name = studentRows[0].first_name || user.first_name;
+        await pool.query('UPDATE users SET student_id = ?, first_name = ? WHERE id = ?', [user.student_id, user.first_name, user.id]);
+        console.log(`[Auth /me] Auto-linked user ${user.email} to student ${user.student_id}`);
+      }
+    }
+
     return res.json({
       id: user.id,
       email: user.email,

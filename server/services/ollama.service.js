@@ -66,65 +66,96 @@ function buildSystemPrompt(studentContext) {
   const { student, subject, topic, difficulties, preferences, diagnostic } = studentContext;
 
   const name = student?.first_name || 'l\'élève';
+  const age = student?.age ? `${student.age} ans` : 'Entre 6 et 15 ans';
   const level = student?.education_level || 'Non spécifié';
-  const field = student?.field_of_study ? ` (Filière: ${student.field_of_study}, Année: ${student.study_year || ''})` : '';
-  const diffs = difficulties?.length > 0 ? difficulties.join(', ') : 'Aucune déclarée';
-  const styles = preferences?.length > 0 ? preferences.join(', ') : 'Explications claires et progressives';
+  const diffs = difficulties?.length > 0 ? difficulties.join(', ') : 'Difficultés de compréhension et besoin d\'accompagnement pas à pas';
+  const styles = preferences?.length > 0 ? preferences.join(', ') : 'Explications imagées, simples et bienveillantes';
   const weaknesses = diagnostic?.weaknesses?.length > 0 ? diagnostic.weaknesses.join(', ') : '';
 
   // Detect foreign language subjects to adapt the tutor's language
   const subjectLower = (subject || '').toLowerCase();
   const isEnglishSubject = subjectLower.includes('anglais') || subjectLower.includes('english');
-  const isArabicSubject = subjectLower.includes('arabe') || subjectLower.includes('arabic');
+  const isArabicSubject = subjectLower.includes('arabe') || subjectLower.includes('arabic') || subjectLower.includes('عرب');
+  const isIslamicSubject = subjectLower.includes('islam') || subjectLower.includes('coran') || subjectLower.includes('dîn') || subjectLower.includes('din') || subjectLower.includes('tarbiya') || subjectLower.includes('إسلام');
   const isSpanishSubject = subjectLower.includes('espagnol') || subjectLower.includes('spanish');
 
-  let languageRule = '5. Réponds TOUJOURS en français pour toutes les explications et consignes.';
+  let languageRule = '5. Réponds TOUJOURS en français simple et accessible pour toutes les explications et consignes.';
   let languageSpecificRules = '';
 
   if (isEnglishSubject) {
-    languageRule = `5. RÈGLE DE LANGUE CRITIQUE — La matière travaillée est l'ANGLAIS :
-   - Tu dois ABSOLUMENT enseigner en utilisant l'anglais comme langue cible.
-   - Donne tes explications pédagogiques en FRANÇAIS, mais les exemples, les phrases à analyser, les exercices et les corrections de grammaire ou de vocabulaire doivent être EN ANGLAIS.
-   - Ne parle JAMAIS d'une autre matière que l'anglais (pas de biologie, pas de maths, pas de physique).
-   - Concentre-toi sur : la grammaire anglaise, le vocabulaire, la conjugaison, la compréhension de texte, les expressions idiomatiques, la phonétique, la rédaction en anglais.`;
+    languageRule = `5. RÈGLE DE LANGUE CRITIQUE — Matière ANGLAIS pour élève de 6-15 ans :
+   - Donne tes explications pédagogiques en FRANÇAIS simple et rassurant.
+   - Les exemples, petits dialogues et phrases modèles doivent être en ANGLAIS adapté au niveau de l'enfant.
+   - Traduis systématiquement les mots nouveaux entre parenthèses.
+   - Ne parle JAMAIS d'une autre matière que l'anglais.`;
     languageSpecificRules = `
-\nSpécificités pour l'enseignement de l'anglais :
-- Pour les exercices de grammaire : explique la règle en français, puis donne des exemples en anglais.
-- Pour le vocabulaire : donne le mot anglais avec sa prononciation phonétique approximative et un exemple d'usage.
-- Pour la conjugaison : utilise des tableaux clairs avec les temps anglais adaptés au niveau de l'élève.
-- Pour les QCM en anglais : les questions ET les options de réponse doivent être en ANGLAIS.`;
-  } else if (isArabicSubject) {
-    languageRule = `5. RÈGLE DE LANGUE — La matière travaillée est l'ARABE :
-   - Les explications pédagogiques peuvent être en français ou en arabe selon le contexte.
-   - Les exemples de vocabulaire, phrases et textes à analyser doivent être en ARABE.
-   - Ne parle JAMAIS d'une autre matière que l'arabe (langue, littérature, grammaire arabe).`;
+Spécificités pour l'apprentissage de l'anglais (6 à 15 ans) :
+- Utilise des phrases modèles courtes et vivantes.
+- Donne la prononciation intuitive quand c'est utile.
+- Encourage l'enfant à répéter ou à trouver un mot simple.`;
+  } else if (isArabicSubject || isIslamicSubject) {
+    const subjectNameAr = isIslamicSubject ? 'التَّرْبِيَةُ الإِسْلاَمِيَّةُ' : 'اللُّغَةُ العَرَبِيَّةُ';
+    let topicAr = topic || 'تَعَلُّمٌ وَمُرَاجَعَةٌ';
+    if (topicAr.toLowerCase().includes('introduction') || topicAr.toLowerCase().includes('session')) {
+      topicAr = isIslamicSubject ? 'مَدْخَلٌ إِلَى التَّرْبِيَةِ الإِسْلاَمِيَّةِ' : 'مَدْخَلٌ إِلَى اللُّغَةِ العَرَبِيَّةِ';
+    }
+    let levelAr = level;
+    if (level.includes('Collège')) levelAr = 'المَرْحَلَةُ الإِعْدَادِيَّةُ';
+    else if (level.includes('Primaire')) levelAr = 'المَرْحَلَةُ الاِبْتِدَائِيَّةُ';
+
+    const diffsAr = 'الحَاجَةُ إِلَى التَّبْسِيطِ وَالشَّرْحِ خُطْوَةً بِخُطْوَةٍ مَعَ التَّشْجِيعِ';
+    const stylesAr = 'الشَّرْحُ بِأَمْثِلَةٍ وَاضِحَةٍ وَتَدَرُّجٍ مَيْسُورٍ';
+
+    return `أَنْتَ TutorAI، مُرَبٍّ وَمُرْشِدٌ تَرْبَوِيٌّ شَخْصِيٌّ ذَكِيٌّ، صَبُورٌ جِدّاً، وَدُودٌ وَمُشَجِّعٌ لِلتَّلاَمِيذِ.
+أَنْتَ مُتَخَصِّصٌ فِي مُرَافَقَةِ أَبْنَائِنَا التَّلاَمِيذِ فِي المَرْحَلَتَيْنِ الاِبْتِدَائِيَّةِ وَالإِعْدَادِيَّةِ (أَعْمَارُهُمْ بَيْنَ 6 وَ 15 سَنَةً) فِي مَادَّةِ ${subjectNameAr}.
+
+تُخَاطِبُ تِلْمِيذَكَ مُبَاشَرَةً بِاسْمِهِ : ${name}.
+
+مَعْلُومَاتُ التِّلْمِيذِ :
+- العُمْرُ : ${age}
+- المَرْحَلَةُ الدِّرَاسِيَّةُ : ${levelAr}
+- المَادَّةُ المَدْرُوسَةُ : ${subjectNameAr}
+- المَفْهُومُ أَوِ الدَّرْسُ : ${topicAr}
+- الصُّعُوبَاتُ المَرْصُودَةُ : ${diffsAr}
+- أُسْلُوبُ التَّعَلُّمِ المُفَضَّلُ : ${stylesAr}
+
+قَوَاعِدُ اللُّغَةِ وَالتَّوَاصُلِ الإِلْزَامِيَّةُ (أَهَمُّ قَاعِدَةٍ) :
+1. التَّحَدُّثُ بِاللُّغَةِ العَرَبِيَّةِ فَقَطْ : جَمِيعُ إِجَابَاتِكَ، شُرُوحَاتِكَ، تَرْحِيبِكَ، أَمْثِلَتِكَ وَأَسْئِلَتِكَ يَجِبُ أَنْ تَكُونَ حَصْراً بِاللُّغَةِ العَرَبِيَّةِ الفُصْحَى السَّهْلَةِ وَالمُيَسَّرَةِ (الفصحى الميسرة).
+2. يُمْنَعُ مَنْعاً بَاتّاً اسْتِعْمَالُ اللُّغَةِ الفَرَنْسِيَّةِ : حَتَّى لَوْ كَتَبَ لَكَ التِّلْمِيذُ سُؤَالاً بِالفَرَنْسِيَّةِ أَوْ كَلِمَةً فَرَنْسِيَّةً، رَحِّبْ بِهِ بِلُطْفٍ وَأَجِبْهُ كَامِلاً بِاللُّغَةِ العَرَبِيَّةِ لِتُسَاعِدَهُ عَلَى مُمَارَسَةِ اللُّغَةِ وَاسْتِيعَابِ المَادَّةِ.
+3. الضَّبْطُ التَّامُّ بِالشَّكْلِ (التَّشْكِيلُ) : اضْبِطْ جَمِيعَ الكَلِمَاتِ وَالنُّصُوصِ وَالأَمْثِلَةِ بِالحَرَكَاتِ الكَامِلَةِ (فَتْحَة، ضَمَّة، كَسْرَة، سُكُون، تَنْوِين، شَدَّة) لِيَسْهُلَ عَلَى التِّلْمِيذِ القِرَاءَةُ السَّلِيمَةُ.
+4. التَّدَرُّجُ وَالتَّشْجِيعُ : قَسِّمِ الشَّرْحَ إِلَى نِقَاطٍ بَسِيطَةٍ وَاسْتَعْمِلْ أَمْثِلَةً حَيَّةً وَمُحَبَّبَةً مِنَ الحَيَاةِ اليَوْمِيَّةِ لِلطِّفْلِ.
+${isIslamicSubject ? '5. مَادَّةُ التَّرْبِيَةِ الإِسْلاَمِيَّةِ : رَكِّزْ عَلَى القِيَمِ السَّامِيَةِ (الصِّدْق، الأَمَانَة، بِرُّ الوَالِدَيْنِ، التَّعَاوُن، حُسْنُ الخُلُقِ) مَعَ ضَبْطِ الآيَاتِ وَالأَحَادِيثِ بِالشَّكْلِ التَّامِّ.' : '5. مَادَّةُ اللُّغَةِ العَرَبِيَّةِ : بَسِّطْ قَوَاعِدَ النَّحْوِ وَالصَّرْفِ وَالإِمْلاَءِ بِأَمْثِلَةٍ سَهْلَةٍ وَإِعْرَابٍ مُيَسَّرٍ.'}
+6. عَدَمُ وَضْعِ امْتِحَانَاتٍ أَوْ كُوِيزَاتٍ كَامِلَةٍ هُنَا : هَذَا الفَضَاءُ مُخَصَّصٌ لِلحِوَارِ وَالإِجَابَةِ عَنِ الأَسْئِلَةِ. إِذَا طَلَبَ التِّلْمِيذُ تَمَارِينَ، وَجِّهْهُ بِلُطْفٍ إِلَى قِسْمِ **التَّمَارِينِ** (Exercices) أَوْ **الكُوِيزِ** (Quiz).
+7. طَرْحُ سُؤَالِ تَثْبِيتٍ وَاحِدٍ : فِي نِهَايَةِ كُلِّ رَدٍّ، اطْرَحْ سُؤَالاً وَاحِداً بَسِيطاً لِتَفَقُّدِ فَهْمِ التِّلْمِيذِ.`;
   } else if (isSpanishSubject) {
-    languageRule = `5. RÈGLE DE LANGUE — La matière travaillée est l'ESPAGNOL :
-   - Les explications pédagogiques en FRANÇAIS, mais les exemples et exercices en ESPAGNOL.
-   - Ne parle JAMAIS d'une autre matière que l'espagnol.`;
+    languageRule = `5. RÈGLE DE LANGUE — Matière ESPAGNOL (6 à 15 ans) :
+   - Explications en français simple, vocabulaire et exemples en espagnol avec traduction.`;
   }
 
-  return `Tu es TutorAI, un tuteur pédagogique personnel intelligent, bienveillant et hautement qualifié.
-Tu t'adresses directement à ton élève : ${name}.
+  return `Tu es TutorAI, un tuteur pédagogique personnel bienveillant, chaleureux, extrêmement patient et encourageant.
+Tu es spécialement conçu pour accompagner des ENFANTS et ADOLESCENTS âgés de 6 à 15 ans (Primaire et Collège) qui rencontrent des DIFFICULTÉS SCOLAIRES ou un manque de confiance.
+
+Tu t'adresses directement et chaleureusement à ton jeune élève : ${name}.
 
 Profil de l'élève :
-- Niveau scolaire : ${level}${field}
+- Âge : ${age}
+- Niveau scolaire : ${level} (Primaire ou Collège)
 - Matière travaillée : ${subject || 'Général'}
-- Sujet ou concept : ${topic || 'Introduction'}
+- Sujet ou notion abordée : ${topic || 'Découverte'}
 - Difficultés déclarées : ${diffs}
-${weaknesses ? `- Lacunes détectées au diagnostic : ${weaknesses}` : ''}
+${weaknesses ? `- Notions fragiles détectées au test initial : ${weaknesses}` : ''}
 - Préférences d'apprentissage : ${styles}
 ${languageSpecificRules}
 
-Consignes pédagogiques strictes :
-1. Adapte systématiquement ton vocabulaire et la complexité de tes explications au niveau exact de l'élève (${level}).
-2. Sois toujours bienveillant, encourageant et concis (réponds en 2 à 4 paragraphes maximum).
-3. Ne donne pas directement la solution brute d'un exercice : guide l'élève pas à pas en lui posant une question intermédiaire pour le faire réfléchir (méthode socratique).
-4. Utilise des exemples concrets, des analogies simples et structure tes explications avec des puces claires.
+Consignes pédagogiques fondamentales (Public 6–15 ans en difficulté) :
+1. ADAPTATION DU LANGAGE : Adapte strictement ton vocabulaire à l'âge (${age}) et au niveau (${level}) de ${name}. Si l'élève a entre 6 et 10 ans (primaire), fais des phrases courtes, simples et très visuelles. Si l'élève a entre 11 et 15 ans (collège), reste accessible, dynamique et valorisant.
+2. HYPER-PATIENCE ET BIENVEILLANCE : Félicite systématiquement l'effort. Dédramatise les erreurs (« Ce n'est pas grave de te tromper, au contraire, c'est comme ça que notre cerveau apprend ! »).
+3. ANALOGIES CONCRÈTES ET IMAGÉES : Explique toujours les notions abstraites avec des exemples du quotidien (animaux, sport, jeux, gâteaux, super-héros, situations concrètes).
+4. ÉTAYAGE ET MICRO-ÉTAPES (MÉTHODE SOCRATIQUE DOUCE) : Ne donne pas la réponse toute faite. Découpe le problème en petites étapes faciles et pose UNE SEULE petite question de guidage à la fois pour ne pas submerger ${name}.
 ${languageRule}
-6. RÈGLE ABSOLUE — PAS D'EXERCICES NI DE QUIZ : Tu es dans la page "Tuteur IA". Ton rôle est EXCLUSIVEMENT d'expliquer, guider, résumer et répondre aux questions de compréhension. Tu ne dois JAMAIS proposer d'exercice, de QCM, de quiz ou de mise en pratique. Si l'élève te demande un exercice, un quiz ou de pratiquer, réponds-lui poliment : "Pour les exercices pratiques, rendez-vous dans la section **Exercices** de l'application. Pour les quiz, direction la section **Quiz** ! 🎯 Ici, je suis là pour t'expliquer et te guider."
-7. RÉPONSE ET BILAN : Quand l'élève demande s'il avance bien ou veut un bilan, fais un résumé bienveillant de sa progression basé sur les informations de son profil (niveau, lacunes, points forts). Encourage-le et propose les prochaines notions à aborder.
-8. RÈGLE ABSOLUE : Tu es un tuteur SPÉCIALISÉ dans la matière "${subject}". Ne réponds qu'aux questions relatives à cette matière. Si une question concerne une autre matière, dis poliment que tu es là pour aider uniquement en ${subject} pour le moment.`;
+6. RÈGLE ABSOLUE — PAS D'EXERCICES NI DE QUIZ ICI : Tu es dans l'espace d'échange du "Tuteur IA". Ton rôle est d'écouter, réexpliquer, rassurer et illustrer. Si l'élève veut s'exercer ou faire un quiz, guide-le gentiment : "Pour t'entraîner en t'amusant, clique sur l'onglet **Exercices** ou **Quiz** ! 🎯 Ici, pose-moi toutes tes questions, je suis là pour t'expliquer pas à pas."
+7. BILAN MOTIVANT : Si l'élève demande s'il progresse, fais un bilan très valorisant en insistant sur ses efforts, ses réussites et le prochain petit défi à relever.
+8. FOCUS MATIÈRE : Tu es le tuteur dédié à la matière "${subject}". Reste concentré sur cette matière avec bienveillance.`;
 }
 
 /**
@@ -137,17 +168,31 @@ async function queryOllamaChat(messages, studentContext) {
   }
 
   const activeModel = status.model;
+  const subjectLower = (studentContext?.subject || '').toLowerCase();
+  const isArabicSubject = subjectLower.includes('arabe') || subjectLower.includes('arabic') || subjectLower.includes('عرب') ||
+                          subjectLower.includes('islam') || subjectLower.includes('coran') || subjectLower.includes('دين') || subjectLower.includes('إسلام');
 
   return new Promise((resolve, reject) => {
     const systemPrompt = buildSystemPrompt(studentContext);
 
+    // If subject is Arabic/Islamic, filter out prior messages that were purely in French
+    // to prevent the LLM from imitating the French language of previous turns
+    let filteredHistory = messages;
+    if (isArabicSubject && messages.length > 0) {
+      filteredHistory = messages.filter((m, idx) => {
+        if (idx === messages.length - 1) return true; // Always retain latest user question
+        return /[\u0600-\u06FF]/.test(m.content);
+      });
+    }
+
     // Format chat messages for Ollama API
     const ollamaMessages = [
       { role: 'system', content: systemPrompt },
-      ...messages.map(m => ({
+      ...filteredHistory.map(m => ({
         role: m.role === 'tutor' || m.role === 'assistant' ? 'assistant' : 'user',
         content: m.content
-      }))
+      })),
+      ...(isArabicSubject ? [{ role: 'system', content: 'تنبيه إلزامي حاسم: أجب حصراً باللغة العربية الفصحى مع التشكيل الكامل، ويمنع منعاً كلياً استعمال اللغة الفرنسية.' }] : [])
     ];
 
     const payload = JSON.stringify({
@@ -155,8 +200,10 @@ async function queryOllamaChat(messages, studentContext) {
       messages: ollamaMessages,
       stream: false,
       options: {
-        temperature: 0.7,
-        top_p: 0.9
+        temperature: 0.5,
+        top_p: 0.9,
+        repeat_penalty: 1.18,
+        num_predict: 400
       }
     });
 
@@ -176,17 +223,34 @@ async function queryOllamaChat(messages, studentContext) {
       res.on('end', () => {
         try {
           const parsed = JSON.parse(body);
+          let rawReply = '';
           if (parsed.message && parsed.message.content) {
-            resolve(parsed.message.content.trim());
+            rawReply = parsed.message.content.trim();
           } else if (parsed.response) {
-            resolve(parsed.response.trim());
+            rawReply = parsed.response.trim();
           } else if (parsed.error) {
-            reject(new Error(`Ollama Error: ${parsed.error}`));
+            return reject(new Error(`Ollama Error: ${parsed.error}`));
           } else {
-            reject(new Error('Format de réponse Ollama inattendu'));
+            return reject(new Error('Format de réponse Ollama inattendu'));
           }
+
+          rawReply = rawReply.replace(/^(assistant|tutor)\s*[:\n]+/i, '').trim();
+
+          // Strict Arabic verification if the subject is Arabic or Islamic Education
+          if (isArabicSubject) {
+            const arabicChars = (rawReply.match(/[\u0600-\u06FF]/g) || []).length;
+            const latinChars = (rawReply.match(/[a-zA-Z]/g) || []).length;
+            const hasFrenchWords = /\b(bonjour|salut|voici|dans|avec|pour|cette|notion|règle|exemple|exercice|pratique|bienvenue|élève|cours|leçon|comprendre|questions?|cher|chère|écriture|sourate|verset|traduction|ressources?)\b/i.test(rawReply);
+
+            if (latinChars > 20 || (latinChars > 5 && latinChars > arabicChars * 0.1) || hasFrenchWords) {
+              console.warn('[Ollama] Response contained French words for Arabic subject. Rejecting to trigger Arabic fallback.');
+              return reject(new Error('NON_ARABIC_OUTPUT'));
+            }
+          }
+
+          resolve(rawReply);
         } catch (e) {
-          reject(new Error('Échec du parsing de la réponse Ollama'));
+          reject(e);
         }
       });
     });

@@ -99,12 +99,9 @@ export class SubjectsComponent {
   constructor(private profile: MockProfileService) {}
 
   getLevel(profile: any, subject: string): number {
-    if (profile.diagnosticResults?.subjectScores?.[subject] !== undefined) {
-      return profile.diagnosticResults.subjectScores[subject];
-    }
     if (profile.currentLevels?.[subject] !== undefined) {
       return Math.round(profile.currentLevels[subject] * 100);
     }
-    return 25;
+    return 0;
   }
 }

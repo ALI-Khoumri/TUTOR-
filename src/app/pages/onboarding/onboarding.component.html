@@ -40,8 +40,20 @@
     <p class="hero-lead" *ngIf="step === 10">Voici l'analyse générée par ton tuteur basée sur tes réponses réelles.</p>
   </div>
 
+  <!-- Right: Checking Existing Profile State -->
+  <div class="onboarding-card surface" *ngIf="isCheckingProfile">
+    <div class="step-panel" style="text-align: center; padding: 3rem 1.5rem;">
+      <div class="welcome-visual">
+        <div class="welcome-icon">🎓</div>
+        <p class="welcome-text">
+          Vérification de ton profil d'apprentissage...
+        </p>
+      </div>
+    </div>
+  </div>
+
   <!-- Right: Interactive Card -->
-  <div class="onboarding-card surface">
+  <div class="onboarding-card surface" *ngIf="!isCheckingProfile">
     <!-- Progress Indicator -->
     <div class="step-bar" *ngIf="step > 0">
       <span class="step-indicator">Étape {{ currentDisplayStep }}/{{ effectiveTotalSteps }}</span>
@@ -106,18 +118,21 @@
     <!-- ÉTAPE 2 : Âge -->
     <div class="step-panel" *ngIf="step === 2">
       <div class="single-input-wrap">
-        <label for="ageInput" class="input-label">Ton âge (années)</label>
+        <label for="ageInput" class="input-label">Ton âge (entre 6 et 15 ans)</label>
         <input
           id="ageInput"
           type="number"
           class="text-input"
           [(ngModel)]="age"
-          min="5"
-          max="99"
-          placeholder="Ex: 19"
+          min="6"
+          max="15"
+          placeholder="Ex: 10"
           (keydown.enter)="canProceed && next()"
           autofocus
         />
+        <p *ngIf="age && (age < 6 || age > 15)" class="field-error" style="color: #ef4444; margin-top: 0.6rem; font-size: 0.9rem; font-weight: 500;">
+          ⚠️ TutorAI est spécialement conçu pour accompagner les élèves âgés de 6 à 15 ans (Primaire et Collège).
+        </p>
       </div>
       <div class="step-actions">
         <button class="btn btn--ghost btn--pill" (click)="prev()">Retour</button>
@@ -127,7 +142,7 @@
 
     <!-- ÉTAPE 3 : Niveau d'études -->
     <div class="step-panel" *ngIf="step === 3">
-      <p class="step-subtitle">Sélectionne ton niveau scolaire <span *ngIf="age" style="color: var(--accent); font-weight: 600;">(adapté à ton âge de {{ age }} ans)</span> :</p>
+      <p class="step-subtitle">Sélectionne ta classe actuelle <span *ngIf="age" style="color: var(--accent); font-weight: 600;">(pour tes {{ age }} ans)</span> :</p>
       <div class="chip-grid chip-grid--vertical">
         <button
           *ngFor="let lvl of filteredEducationLevels"
@@ -145,85 +160,48 @@
       </div>
     </div>
 
-    <!-- ÉTAPE 4 : Filière & Formation (Adaptatif) -->
+    <!-- ÉTAPE 4 : Établissement & Cycle -->
     <div class="step-panel" *ngIf="step === 4">
-      <!-- Si Supérieur -->
-      <div *ngIf="schoolCategory === 'supérieur'" class="form-grid">
+      <!-- Si Primaire -->
+      <div *ngIf="schoolCategory === 'primaire'" class="form-grid">
         <div class="form-group form-group--full">
-          <label>Quelle est ta filière ?</label>
-          <div class="chip-grid">
-            <button
-              *ngFor="let f of fields"
-              type="button"
-              class="chip"
-              [class.is-active]="fieldOfStudy === f"
-              (click)="fieldOfStudy = f; persistDraft()"
-            >
-              {{ f }}
-            </button>
+          <div class="info-box">
+            <span>🎒</span>
+            <p>Au cycle primaire ({{ educationLevel }}), le programme est commun. Tu vas pouvoir choisir les matières où tu as besoin d'un coup de pouce à l'étape suivante !</p>
           </div>
         </div>
-
-        <div class="form-group">
-          <label>Quelle est ton année d'étude ?</label>
-          <select [(ngModel)]="studyYear" (change)="persistDraft()">
-            <option value="" disabled>Sélectionne ton année</option>
-            <option *ngFor="let y of filteredStudyYears" [value]="y">{{ y }}</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="schoolInput">Dans quel établissement étudies-tu ? <span class="optional">(facultatif)</span></label>
+        <div class="form-group form-group--full">
+          <label for="schoolInputPrimary">Nom de ton école <span class="optional">(facultatif)</span></label>
           <input
-            id="schoolInput"
+            id="schoolInputPrimary"
             type="text"
             [(ngModel)]="school"
-            placeholder="Ex : Université, IUT, École d'ingénieurs..."
+            placeholder="Ex : École Al Madina..."
             (input)="persistDraft()"
           />
         </div>
       </div>
 
-      <!-- Si Collège : pas de branche particulière -->
+      <!-- Si Collège -->
       <div *ngIf="schoolCategory === 'collège'" class="form-grid">
         <div class="form-group form-group--full">
           <div class="info-box">
             <span>📚</span>
-            <p>Au collège marocain, le programme est commun à tous les élèves (pas de filière spécifique). Tu choisiras tes matières à travailler à l'étape suivante.</p>
+            <p>Au collège ({{ educationLevel }}), le programme renforce tes compétences clés. Tu choisiras les matières à travailler pas à pas à l'étape suivante !</p>
           </div>
+        </div>
+        <div class="form-group form-group--full">
+          <label for="schoolInputCollege">Nom de ton collège <span class="optional">(facultatif)</span></label>
+          <input
+            id="schoolInputCollege"
+            type="text"
+            [(ngModel)]="school"
+            placeholder="Ex : Collège Ibn Battouta..."
+            (input)="persistDraft()"
+          />
         </div>
       </div>
 
-      <!-- Si Lycée qualifiant : branche selon le niveau Bac -->
-      <div *ngIf="schoolCategory === 'lycée' && parcoursOptions.length > 0" class="form-grid">
-        <div class="form-group form-group--full">
-          <label>
-            Quelle est ta branche / filière ?
-            <span class="optional"> ({{ educationLevel }})</span>
-          </label>
-          <div class="chip-grid">
-            <button
-              *ngFor="let p of parcoursOptions"
-              type="button"
-              class="chip"
-              [class.is-active]="parcours === p"
-              (click)="parcours = p; persistDraft()"
-            >
-              {{ p }}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Si Lycée Tronc commun : orientation générale -->
-      <div *ngIf="schoolCategory === 'lycée' && parcoursOptions.length === 0" class="form-grid">
-        <div class="form-group form-group--full">
-          <div class="info-box">
-            <span>🎯</span>
-            <p>Toutes les matières du tronc commun seront disponibles. Tu pourras sélectionner celles que tu veux travailler.</p>
-          </div>
-        </div>
-      </div>
 
       <div class="step-actions">
         <button class="btn btn--ghost btn--pill" (click)="prev()">Retour</button>

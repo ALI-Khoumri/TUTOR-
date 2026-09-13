@@ -1,17 +1,17 @@
 import { Routes } from '@angular/router';
-import { onboardingCompleteGuard } from './core/guards/onboarding.guard';
+import { onboardingCompleteGuard, onboardingPendingGuard } from './core/guards/onboarding.guard';
 import { authGuard, alreadyLoggedInGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
-  // Root redirect
-  { path: '', pathMatch: 'full', loadComponent: () => import('./pages/route-redirect/route-redirect.component').then(m => m.RouteRedirectComponent) },
+  // Root redirect: route to dashboard (authGuard will prompt login if guest, onboarding guard if pending)
+  { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
 
   // Public auth pages (redirect to dashboard if already logged in)
   { path: 'login',    canMatch: [alreadyLoggedInGuard], loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent) },
   { path: 'register', canMatch: [alreadyLoggedInGuard], loadComponent: () => import('./pages/register/register.component').then(m => m.RegisterComponent) },
 
   // Onboarding: must be logged in but onboarding not done yet
-  { path: 'onboarding', canMatch: [authGuard], loadComponent: () => import('./pages/onboarding/onboarding.component').then(m => m.OnboardingComponent) },
+  { path: 'onboarding', canMatch: [authGuard, onboardingPendingGuard], loadComponent: () => import('./pages/onboarding/onboarding.component').then(m => m.OnboardingComponent) },
 
   // Protected app routes: must be logged in + onboarding done
   {

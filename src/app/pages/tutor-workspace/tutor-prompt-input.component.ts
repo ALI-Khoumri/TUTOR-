@@ -17,7 +17,7 @@ import { parseQuizFromText, QuizQuestion, QuizOption } from '../../core/utils/qu
         <div class="helper-top">
           <div class="helper-badge">
             <mat-icon>touch_app</mat-icon>
-            <span>Choisis ta réponse en 1 clic :</span>
+            <span>{{ isArabic ? 'اخْتَرْ إِجَابَتَكَ بِنَقْرَةٍ وَاحِدَةٍ :' : 'Choisis ta réponse en 1 clic :' }}</span>
           </div>
 
           <!-- Question Switcher Tabs (if multi-questions) -->
@@ -29,15 +29,15 @@ import { parseQuizFromText, QuizQuestion, QuizOption } from '../../core/utils/qu
               [class.is-active]="selectedQuestionIndex === idx"
               (click)="selectedQuestionIndex = idx"
             >
-              Question {{ q.questionNumber }}
+              {{ isArabic ? ('السؤال ' + q.questionNumber) : ('Question ' + q.questionNumber) }}
             </button>
           </div>
         </div>
 
         <!-- Current Question Statement -->
         <div class="question-preview" *ngIf="currentQuestion">
-          <span class="preview-badge">Question {{ currentQuestion.questionNumber }}</span>
-          <span class="preview-title">{{ currentQuestion.questionText }}</span>
+          <span class="preview-badge">{{ isArabic ? ('السؤال ' + currentQuestion.questionNumber) : ('Question ' + currentQuestion.questionNumber) }}</span>
+          <span class="preview-title" [class.arabic-font]="isArabic">{{ currentQuestion.questionText }}</span>
         </div>
 
         <!-- Choice Buttons Grid -->
@@ -50,7 +50,7 @@ import { parseQuizFromText, QuizQuestion, QuizOption } from '../../core/utils/qu
             [disabled]="isSending"
           >
             <span class="choice-circle">{{ opt.letter }}</span>
-            <span class="choice-label">{{ opt.text }}</span>
+            <span class="choice-label" [class.arabic-font]="isArabic">{{ opt.text }}</span>
           </button>
         </div>
       </div>
@@ -59,7 +59,9 @@ import { parseQuizFromText, QuizQuestion, QuizOption } from '../../core/utils/qu
       <div class="input-row">
         <textarea
           [(ngModel)]="text"
-          [placeholder]="currentQuestion ? 'Ou écris ta réponse personnalisée ici...' : 'Pose ta question au tuteur IA...'"
+          [placeholder]="isArabic ? (currentQuestion ? 'أَوْ اكْتُبْ إِجَابَتَكَ هُنَا...' : 'اطْرَحْ سُؤَالَكَ بِاللُّغَةِ العَرَبِيَّةِ عَلَى المُرَبِّي الذَّكِيِّ...') : (currentQuestion ? 'Ou écris ta réponse personnalisée ici...' : 'Pose ta question au tuteur IA...')"
+          [attr.dir]="isArabic ? 'rtl' : 'ltr'"
+          [class.arabic-font]="isArabic"
           rows="2"
           (keydown.enter)="onEnter($event)"
           [disabled]="isSending"
@@ -70,11 +72,12 @@ import { parseQuizFromText, QuizQuestion, QuizOption } from '../../core/utils/qu
       </div>
 
       <!-- Quick Action Pills -->
-      <div class="quick-actions">
+      <div class="quick-actions" [attr.dir]="isArabic ? 'rtl' : 'ltr'">
         <button
-          *ngFor="let a of quickActions"
+          *ngFor="let a of currentQuickActions"
           type="button"
           class="btn btn--sm btn--secondary btn--pill"
+          [class.arabic-font]="isArabic"
           (click)="quick(a.text)"
           [disabled]="isSending"
         >
@@ -319,6 +322,11 @@ import { parseQuizFromText, QuizQuestion, QuizOption } from '../../core/utils/qu
       height: 16px !important;
     }
 
+    .arabic-font {
+      font-family: 'Amiri', 'Cairo', 'Segoe UI', Tahoma, sans-serif !important;
+      direction: rtl;
+    }
+
     @keyframes slideUp {
       from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
@@ -330,6 +338,7 @@ export class TutorPromptInputComponent implements OnInit, OnDestroy {
   isSending = false;
   activeQuizQuestions: QuizQuestion[] = [];
   selectedQuestionIndex = 0;
+  currentSubject = '';
 
   quickActions = [
     { label: 'Expliquer autrement', text: 'Peux-tu m\'expliquer cette notion différemment avec une analogie simple ?', icon: 'lightbulb' },
@@ -339,11 +348,24 @@ export class TutorPromptInputComponent implements OnInit, OnDestroy {
     { label: 'J\'avance bien ?', text: 'Est-ce que j\'avance bien ? Fais-moi un bilan de ma progression.', icon: 'trending_up' }
   ];
 
+  arabicQuickActions = [
+    { label: '💡 شرح مبسط', text: 'هَلْ يُمْكِنُكَ شَرْحُ هَذَا المَفْهُومِ بِأُسْلُوبٍ مُبَسَّطٍ وَأَمْثِلَةٍ سَهْلَةٍ ؟', icon: 'lightbulb' },
+    { label: '📘 مثال تطبيقي', text: 'أَعْطِنِي مِثَالاً وَاضِحاً وَتَطْبِيقاً عَمَلِيّاً مِنْ هَذَا الدَّرْسِ.', icon: 'code' },
+    { label: '📝 تلخيص الدرس', text: 'هَلْ يُمْكِنُكَ تَلْخِيصُ النِّقَاطِ الأَسَاسِيَّةِ لِهَذَا الدَّرْسِ فِي سُطُورٍ مُوجَزَةٍ ؟', icon: 'summarize' },
+    { label: '🔍 أين خطئي ؟', text: 'سَاعِدْنِي فِي مَعْرِفَةِ مَوْضِعِ الخَطَأِ فِي إِجَابَتِي وَكَيْفَ أُصَحِّحُهُ.', icon: 'search' },
+    { label: '📈 حصيلة تقدمي', text: 'كَيْفَ تَرَى مُسْتَوَايَ وَتَقَدُّمِي فِي هَذِهِ المَادَّةِ ؟', icon: 'trending_up' }
+  ];
+
   private sub?: Subscription;
+  private sessionSub?: Subscription;
 
   constructor(private mock: MockSessionService) {}
 
   ngOnInit(): void {
+    this.sessionSub = this.mock.session$.subscribe(s => {
+      this.currentSubject = s?.subject || '';
+    });
+
     this.sub = this.mock.messages$.subscribe(msgs => {
       if (!msgs || msgs.length === 0) {
         this.activeQuizQuestions = [];
@@ -366,6 +388,15 @@ export class TutorPromptInputComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
+    this.sessionSub?.unsubscribe();
+  }
+
+  get isArabic(): boolean {
+    return this.mock.isArabicSubject(this.currentSubject);
+  }
+
+  get currentQuickActions() {
+    return this.isArabic ? this.arabicQuickActions : this.quickActions;
   }
 
   get currentQuestion(): QuizQuestion | null {

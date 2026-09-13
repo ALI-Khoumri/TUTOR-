@@ -1,4 +1,4 @@
-﻿import { Injectable } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
 import { AuthService, AuthUser } from './auth.service';
@@ -9,10 +9,19 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class ProfileService {
-  private readonly draftStorageKey = 'tutorai.onboarding-draft.v2';
+  private get draftStorageKey(): string {
+    const uid = this.auth.currentUser?.id || 'guest';
+    return `tutorai.onboarding-draft.${uid}.v3`;
+  }
   private readonly activeProfile$ = new BehaviorSubject<UserProfile>(this.createEmptyProfile());
 
   constructor(private auth: AuthService, private http: HttpClient) {
+    // Purge legacy global drafts from old versions
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('tutorai.onboarding-draft.v2');
+      localStorage.removeItem('tutorai.onboarding-draft');
+    }
+
     this.auth.user$.subscribe((user) => {
       if (user) {
         this.loadProfileFromDatabase(user);
@@ -31,26 +40,27 @@ export class ProfileService {
   }
 
   isOnboardingComplete(): boolean {
-    return !!this.currentProfile && this.currentProfile.onboardingCompleted === true && !!this.currentProfile.firstName;
+    return !!this.currentProfile && this.currentProfile.onboardingCompleted === true && !!(this.currentProfile.firstName || this.currentProfile.name);
   }
 
   /** Loads the student profile from the MySQL backend using JWT. */
-  async loadProfileFromDatabase(user: AuthUser | null): Promise<UserProfile> {
-    if (!user) {
+  async loadProfileFromDatabase(user?: AuthUser | null): Promise<UserProfile> {
+    const targetUser = (user !== undefined && user !== null) ? user : this.auth.currentUser;
+    if (!targetUser) {
       const empty = this.createEmptyProfile();
       this.activeProfile$.next(empty);
       return empty;
     }
     try {
       // Use studentId if available, else use user.id as fallback
-      const studentId = user.studentId || user.id;
+      const studentId = targetUser.studentId || targetUser.id;
       const profile = await firstValueFrom(this.http.get<UserProfile>('/api/profile', {
         headers: {
           'x-student-id': studentId,
           ...this.auth.getAuthHeaders()
         }
       }));
-      if (profile && profile.onboardingCompleted && profile.firstName) {
+      if (profile && profile.onboardingCompleted && (profile.firstName || profile.name)) {
         this.activeProfile$.next(profile);
         return profile;
       }
@@ -104,6 +114,29 @@ export class ProfileService {
     return this.loadProfileFromDatabase(user);
   }
 
+  /** Records an exercise completed for a subject and reloads profile progress. */
+  async recordExerciseCompleted(subject: string, exerciseId: string, completed: boolean): Promise<UserProfile> {
+    const user = this.auth.currentUser;
+    const studentId = user?.studentId || user?.id || 'default-student';
+
+    try {
+      await firstValueFrom(this.http.post('/api/progress/exercise', {
+        subject,
+        exerciseId,
+        completed
+      }, {
+        headers: {
+          'x-student-id': studentId,
+          ...this.auth.getAuthHeaders()
+        }
+      }));
+    } catch (err) {
+      console.warn('[ProfileService] Failed to record exercise progress:', err);
+    }
+
+    return this.loadProfileFromDatabase(user);
+  }
+
   saveDraft(draft: Partial<OnboardingProfileInput> & { currentStep?: number }): void {
     if (typeof localStorage === 'undefined') return;
     localStorage.setItem(this.draftStorageKey, JSON.stringify(draft));
@@ -119,6 +152,8 @@ export class ProfileService {
   clearDraft(): void {
     if (typeof localStorage === 'undefined') return;
     localStorage.removeItem(this.draftStorageKey);
+    localStorage.removeItem('tutorai.onboarding-draft.v2');
+    localStorage.removeItem('tutorai.onboarding-draft');
   }
 
   async resetCurrentProfile(): Promise<UserProfile> {
@@ -148,7 +183,7 @@ export class ProfileService {
       name: '',
       firstName: '',
       age: 0,
-      ageGroup: '17-20',
+      ageGroup: '9-11',
       educationLevel: '',
       country: 'Maroc',
       language: 'Français',

@@ -10,29 +10,48 @@ import { MatIconModule } from '@angular/material/icon';
   standalone: true,
   imports: [CommonModule, AsyncPipe, MatIconModule],
   template: `
-  <div class="session-header surface--flat" *ngIf="session$ | async as s">
+  <div
+    class="session-header surface--flat"
+    *ngIf="session$ | async as s"
+    [class.arabic-header]="isArabicSubject(s.subject)"
+    [attr.dir]="isArabicSubject(s.subject) ? 'rtl' : 'ltr'"
+  >
     <div class="session-info">
       <div class="session-meta">
         <mat-icon class="session-icon">auto_awesome</mat-icon>
-        <span class="session-kicker">AI Personal Tutor</span>
+        <span class="session-kicker">{{ isArabicSubject(s.subject) ? 'المُرَبِّي الذَّكِيُّ • AI Personal Tutor' : 'AI Personal Tutor' }}</span>
       </div>
-      <div class="session-topic">{{ s.subject }} → <strong>{{ s.topic }}</strong></div>
-      <div class="session-summary" *ngIf="profile$ | async as p">
-        Tu travailles sur <strong>{{ s.subject }}</strong>.
-        <span *ngIf="s.understanding > 0">
-          Niveau estimé : {{ s.understanding * 100 | number:'1.0-0' }}%.
-        </span>
-        <span *ngIf="s.understanding === 0">
-          Niveau initial : en cours d'évaluation.
-        </span>
-        <span *ngIf="s.nextAction">Prochaine étape recommandée : {{ s.nextAction }}.</span>
+      <div class="session-topic" [class.arabic-font]="isArabicSubject(s.subject)">
+        {{ isArabicSubject(s.subject) ? (s.subject + ' ← ' + s.topic) : (s.subject + ' → ' + s.topic) }}
+      </div>
+      <div class="session-summary" *ngIf="profile$ | async as p" [class.arabic-font]="isArabicSubject(s.subject)">
+        <ng-container *ngIf="isArabicSubject(s.subject)">
+          تَتَعَلَّمُ الآنَ مَادَّةَ <strong>{{ s.subject }}</strong>.
+          <span *ngIf="s.understanding > 0">
+            نِسْبَةُ الاِسْتِيعَابِ التَّقْدِيرِيَّةُ : {{ s.understanding * 100 | number:'1.0-0' }}%.
+          </span>
+          <span *ngIf="s.understanding === 0">
+            المُسْتَوَى الأَوَّلِيُّ : قَيْدَ التَّقْيِيمِ التَّشْخِيصِيِّ.
+          </span>
+          <span *ngIf="s.nextAction"> الخُطْوَةُ المُقْتَرَحَةُ : {{ s.nextAction }}.</span>
+        </ng-container>
+        <ng-container *ngIf="!isArabicSubject(s.subject)">
+          Tu travailles sur <strong>{{ s.subject }}</strong>.
+          <span *ngIf="s.understanding > 0">
+            Niveau estimé : {{ s.understanding * 100 | number:'1.0-0' }}%.
+          </span>
+          <span *ngIf="s.understanding === 0">
+            Niveau initial : en cours d'évaluation.
+          </span>
+          <span *ngIf="s.nextAction">Prochaine étape recommandée : {{ s.nextAction }}.</span>
+        </ng-container>
       </div>
     </div>
     <div class="session-progress">
       <div class="sp-head">
-        <span class="sp-label">Compréhension</span>
+        <span class="sp-label">{{ isArabicSubject(s.subject) ? 'نِسْبَةُ الاِسْتِيعَابِ' : 'Compréhension' }}</span>
         <span class="sp-pct" *ngIf="s.understanding > 0">{{ s.understanding * 100 | number:'1.0-0' }}%</span>
-        <span class="sp-pct" *ngIf="s.understanding === 0">Initial</span>
+        <span class="sp-pct" *ngIf="s.understanding === 0">{{ isArabicSubject(s.subject) ? 'أَوَّلِي' : 'Initial' }}</span>
       </div>
       <div class="progress-bar">
         <div class="progress-bar__fill" [style.width.%]="s.understanding > 0 ? (s.understanding * 100) : 10"></div>
@@ -123,6 +142,16 @@ import { MatIconModule } from '@angular/material/icon';
       color: var(--accent);
     }
 
+    .arabic-header {
+      direction: rtl;
+      text-align: right;
+    }
+
+    .arabic-font {
+      font-family: 'Amiri', 'Cairo', 'Segoe UI', Tahoma, sans-serif !important;
+      direction: rtl;
+    }
+
     @media (max-width: 768px) {
       .session-header {
         flex-direction: column;
@@ -138,5 +167,10 @@ import { MatIconModule } from '@angular/material/icon';
 export class SessionHeaderComponent {
   session$ = this.mock.session$;
   profile$ = this.profile.active$;
+
   constructor(private mock: MockSessionService, private profile: MockProfileService) {}
+
+  isArabicSubject(subj?: string): boolean {
+    return this.mock.isArabicSubject(subj);
+  }
 }

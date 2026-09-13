@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { ProfileService } from '../../core/services/profile.service';
 
 @Component({
   selector: 'app-register',
@@ -22,7 +23,11 @@ export class RegisterComponent {
   errorMsg = signal('');
   successMsg = signal('');
 
-  constructor(private auth: AuthService, private router: Router) {}
+  constructor(
+    private auth: AuthService,
+    private profileService: ProfileService,
+    private router: Router
+  ) {}
 
   get passwordStrength(): 'weak' | 'medium' | 'strong' | '' {
     if (this.password.length === 0) return '';
@@ -55,6 +60,7 @@ export class RegisterComponent {
     this.auth.register(this.email.trim(), this.password, this.firstName.trim()).subscribe({
       next: () => {
         this.loading.set(false);
+        this.profileService.clearDraft();
         void this.router.navigateByUrl('/onboarding');
       },
       error: (err) => {

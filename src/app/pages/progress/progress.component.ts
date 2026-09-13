@@ -23,12 +23,11 @@ import { MatIconModule } from '@angular/material/icon';
       <div class="progress-overview">
         <div class="stat-card">
           <span class="stat-card__label">Progression globale</span>
-          <span class="stat-card__value" *ngIf="profile.diagnosticResults">{{ profile.diagnosticResults.overallScore }}%</span>
-          <span class="stat-card__value stat-card__value--small" *ngIf="!profile.diagnosticResults">À évaluer</span>
-          <div class="progress-bar" style="margin-top: 0.4rem;" *ngIf="profile.diagnosticResults">
-            <div class="progress-bar__fill" [style.width.%]="profile.diagnosticResults.overallScore"></div>
+          <span class="stat-card__value">{{ profile.progress?.globalProgress || 0 }}%</span>
+          <div class="progress-bar" style="margin-top: 0.4rem;">
+            <div class="progress-bar__fill" [style.width.%]="profile.progress?.globalProgress || 0"></div>
           </div>
-          <span class="stat-card__sub" *ngIf="!profile.diagnosticResults">Évaluée au fil de tes sessions</span>
+          <span class="stat-card__sub">Évolue au fil de tes cours, exercices et quiz</span>
         </div>
         <div class="stat-card">
           <span class="stat-card__label">Exercices réalisés</span>
@@ -42,7 +41,7 @@ import { MatIconModule } from '@angular/material/icon';
         </div>
         <div class="stat-card">
           <span class="stat-card__label">Temps d'étude</span>
-          <span class="stat-card__value">{{ profile.progress?.studyTimeTotal || '0h' }}</span>
+          <span class="stat-card__value">{{ profile.progress?.studyTimeTotal || '0m' }}</span>
           <span class="stat-card__sub">au total</span>
         </div>
       </div>
@@ -54,11 +53,10 @@ import { MatIconModule } from '@angular/material/icon';
           <div *ngFor="let subject of profile.subjects" class="subject-row">
             <div class="sr-head">
               <span class="sr-name">{{ subject }}</span>
-              <span class="sr-pct" *ngIf="getSubjectLevel(profile, subject) !== null">{{ getSubjectLevel(profile, subject) }}%</span>
-              <span class="sr-pct muted" *ngIf="getSubjectLevel(profile, subject) === null">En cours</span>
+              <span class="sr-pct">{{ getSubjectLevel(profile, subject) }}%</span>
             </div>
             <div class="progress-bar">
-              <div class="progress-bar__fill" [style.width.%]="getSubjectLevel(profile, subject) || 10"></div>
+              <div class="progress-bar__fill" [style.width.%]="getSubjectLevel(profile, subject)"></div>
             </div>
           </div>
         </div>
@@ -286,13 +284,10 @@ export class ProgressComponent {
 
   constructor(private profile: MockProfileService, private session: MockSessionService) {}
 
-  getSubjectLevel(profile: any, subject: string): number | null {
-    if (profile.diagnosticResults?.subjectScores?.[subject] !== undefined) {
-      return profile.diagnosticResults.subjectScores[subject];
-    }
+  getSubjectLevel(profile: any, subject: string): number {
     if (profile.currentLevels?.[subject] !== undefined) {
       return Math.round(profile.currentLevels[subject] * 100);
     }
-    return null;
+    return 0;
   }
 }

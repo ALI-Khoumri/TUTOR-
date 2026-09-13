@@ -76,9 +76,10 @@ export class MockSessionService {
     }
 
     const firstSubject = profile.subjects?.[0] || 'Général';
+    const isAr = this.isArabicSubject(firstSubject);
     const diagScore = profile.diagnosticResults?.overallScore;
     const understanding = diagScore !== undefined ? diagScore / 100 : 0;
-    const nextAction = profile.diagnosticResults?.recommendations?.[0] || `Découvrir les fondamentaux en ${firstSubject}`;
+    const nextAction = profile.diagnosticResults?.recommendations?.[0] || (isAr ? `تَعَمُّقٌ فِي مَفَاهِيمِ ${this.getArabicSubjectName(firstSubject)}` : `Découvrir les fondamentaux en ${firstSubject}`);
 
     const headers = { 'x-student-id': profile.id || 'default-student' };
 
@@ -90,7 +91,7 @@ export class MockSessionService {
       if (!activeConv) {
         activeConv = await firstValueFrom(this.http.post<any>('/api/conversations', {
           subjectName: firstSubject,
-          topic: `Introduction à ${firstSubject}`
+          topic: isAr ? `مَدْخَلٌ إِلَى ${this.getArabicSubjectName(firstSubject)}` : `Introduction à ${firstSubject}`
         }, { headers }));
       }
 
@@ -107,8 +108,11 @@ export class MockSessionService {
             time: m.created_at
           })));
         } else {
-          // Send initial personalized welcome message to SQLite
-          const welcomeMsg = `Bonjour ${profile.firstName} ! 👋 Je suis ton tuteur IA personnel. J'ai bien analysé ton profil (${profile.educationLevel}${profile.fieldOfStudy ? ' — ' + profile.fieldOfStudy : ''}) et tes objectifs (${profile.objectives?.join(', ') || 'progresser'}). Par quelle notion en ${firstSubject} souhaites-tu commencer aujourd'hui ?`;
+          // Send initial personalized welcome message
+          const isAr = this.isArabicSubject(firstSubject);
+          const welcomeMsg = isAr
+            ? `مَرْحَباً بِكَ يَا ${profile.firstName} ! 👋 أَنَا مُرَبِّيكَ الذَّكِيُّ الشَّخْصِيُّ لِمَادَّةِ ${this.getArabicSubjectName(firstSubject)}. يَسُرُّنِي جِدّاً مُرَافَقَتُكَ لِنَتَعَلَّمَ خُطْوَةً بِخُطْوَةٍ وَبِكُلِّ هُدُوءٍ. بِأَيِّ مَفْهُومٍ أَوْ سُؤَالٍ تَرْغَبُ أَنْ نَبْدَأَ اليَوْمَ ؟`
+            : `Bonjour ${profile.firstName} ! 👋 Je suis ton tuteur IA personnel. Je suis ravi de t'accompagner en ${profile.educationLevel || 'cette année'}. Ici, on avance à ton rythme et sans stress. Par quelle notion en ${firstSubject} souhaites-tu qu'on commence aujourd'hui ?`;
           this._messages.next([
             { id: 'welcome-1', author: 'tutor', text: welcomeMsg }
           ]);
@@ -131,11 +135,14 @@ export class MockSessionService {
 
     } catch (e) {
       console.warn('[SessionService] Backend not reachable, using profile fallback:', e);
+      const isAr = this.isArabicSubject(firstSubject);
       this._messages.next([
         {
           id: 'welcome-1',
           author: 'tutor',
-          text: `Bonjour ${profile.firstName} ! 👋 Je suis ton tuteur IA personnel. Par quelle notion en ${firstSubject} souhaites-tu commencer aujourd'hui ?`
+          text: isAr
+            ? `مَرْحَباً بِكَ يَا ${profile.firstName} ! 👋 أَنَا مُرَبِّيكَ الذَّكِيُّ فِي مَادَّةِ ${this.getArabicSubjectName(firstSubject)}. أَنَا هُنَا لأَشْرَحَ لَكَ خُطْوَةً بِخُطْوَةٍ وَأُجِيبَ عَنْ جَمِيعِ أَسْئِلَتِكَ. مَاذَا تَرْغَبُ أَنْ نَتَعَلَّمَ مَعاً اليَوْمَ ؟`
+            : `Bonjour ${profile.firstName} ! 👋 Je suis ton tuteur IA. Je suis là pour t'expliquer pas à pas et répondre à toutes tes questions en ${firstSubject}. Que souhaites-tu découvrir aujourd'hui ?`
         }
       ]);
       this._memory.next([]);
@@ -144,19 +151,21 @@ export class MockSessionService {
     this._session.next({
       id: this.currentConversationId || undefined,
       subject: firstSubject,
-      topic: `Introduction à ${firstSubject}`,
+      topic: isAr ? `مَدْخَلٌ إِلَى ${this.getArabicSubjectName(firstSubject)}` : `Introduction à ${firstSubject}`,
       understanding,
       lastDifficulty: profile.difficulties?.[0],
-      nextAction
+      nextAction: isAr ? `تَعَمُّقٌ فِي مَفَاهِيمِ ${this.getArabicSubjectName(firstSubject)}` : nextAction
     });
 
     if (profile.difficulties?.length > 0) {
       this._difficulty.next({
-        topic: firstSubject,
+        topic: isAr ? this.getArabicSubjectName(firstSubject) : firstSubject,
         cause: profile.difficulties[0],
-        suggestion: profile.difficultyExplanation
-          ? `Tu as mentionné : « ${profile.difficultyExplanation} ». Nous allons aborder cela pas à pas avec des exemples clairs.`
-          : `Tu as indiqué : « ${profile.difficulties[0]} ». Je vais adapter mon rythme et mes explications pour t'aider à surmonter cela.`
+        suggestion: isAr
+          ? 'سَنَتَعَاوَنُ مَعاً خُطْوَةً بِخُطْوَةٍ وَبِأَمْثِلَةٍ وَاضِحَةٍ لِتَجَاوُزِ كُلِّ صُعُوبَةٍ وَتَحْقِيقِ التَّفَوُّقِ.'
+          : (profile.difficultyExplanation
+            ? `Tu as mentionné : « ${profile.difficultyExplanation} ». Nous allons aborder cela pas à pas avec des exemples clairs.`
+            : `Tu as indiqué : « ${profile.difficulties[0]} ». Je vais adapter mon rythme et mes explications pour t'aider à surmonter cela.`)
       });
     } else {
       this._difficulty.next(null);
@@ -236,7 +245,10 @@ export class MockSessionService {
           })));
         } else {
           // Welcome message for the new subject
-          const welcomeMsg = `Tu viens de passer à la matière **${subjectName}**. 📚 Je suis prêt à t'aider ! Quelle notion de ${subjectName} souhaites-tu que je t'explique ?`;
+          const isAr = this.isArabicSubject(subjectName);
+          const welcomeMsg = isAr
+            ? `لَقَدِ انْتَقَلْتَ الآنَ إِلَى مَادَّةِ **${this.getArabicSubjectName(subjectName)}** 📚. أَنَا جَاهِزٌ لِمُسَاعَدَتِكَ بِاللُّغَةِ العَرَبِيَّةِ الفُصْحَى ! مَا هُوَ المَفْهُومُ أَوِ الدَّرْسُ الَّذِي تَوَدُّ أَنْ نَبْدَأَ بِهِ ؟`
+            : `Tu viens de passer à la matière **${subjectName}**. 📚 Je suis prêt à t'aider ! Quelle notion de ${subjectName} souhaites-tu que je t'explique ?`;
           this._messages.next([
             { id: `welcome-${Date.now()}`, author: 'tutor', text: welcomeMsg }
           ]);
@@ -246,17 +258,33 @@ export class MockSessionService {
       // 3. Update session context
       const diagScore = profile.diagnosticResults?.overallScore;
       const understanding = diagScore !== undefined ? diagScore / 100 : 0;
+      const isArSubject = this.isArabicSubject(subjectName);
       this._session.next({
         id: this.currentConversationId || undefined,
         subject: subjectName,
-        topic: `Introduction à ${subjectName}`,
+        topic: isArSubject ? `مَدْخَلٌ إِلَى ${this.getArabicSubjectName(subjectName)}` : `Introduction à ${subjectName}`,
         understanding,
         lastDifficulty: profile.difficulties?.[0],
-        nextAction: `Approfondir les notions en ${subjectName}`
+        nextAction: isArSubject ? `تَعَمُّقٌ فِي مَفَاهِيمِ ${this.getArabicSubjectName(subjectName)}` : `Approfondir les notions en ${subjectName}`
       });
 
     } catch (err) {
       console.error('[SessionService] Failed to switch subject:', err);
     }
+  }
+
+  isArabicSubject(subj?: string): boolean {
+    if (!subj) return false;
+    const s = subj.toLowerCase();
+    return s.includes('arabe') || s.includes('islam') || s.includes('دين') || s.includes('عرب') || s.includes('coran') || s.includes('tarbiya') || s.includes('إسلام');
+  }
+
+  getArabicSubjectName(subj?: string): string {
+    if (!subj) return 'اللُّغَةِ العَرَبِيَّةِ';
+    const s = subj.toLowerCase();
+    if (s.includes('islam') || s.includes('دين') || s.includes('coran') || s.includes('إسلام')) {
+      return 'التَّرْبِيَةِ الإِسْلاَمِيَّةِ';
+    }
+    return 'اللُّغَةِ العَرَبِيَّةِ';
   }
 }

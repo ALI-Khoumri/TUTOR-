@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Observable } from 'rxjs';
 import { RouterLink } from '@angular/router';
@@ -15,7 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
-export class DashboardComponent {
+export class DashboardComponent implements OnInit {
   user$: Observable<AuthUser | null>;
   profile$: Observable<UserProfile>;
   session$: Observable<SessionContext | null>;
@@ -30,15 +30,15 @@ export class DashboardComponent {
     this.session$ = this.sessionService.session$;
   }
 
-  getSubtitle(profile: UserProfile): string {
-    if (!profile.educationLevel) return 'Bienvenue sur ton espace';
-    if (profile.educationLevel === 'Université / École supérieure') {
-      const parts = [];
-      if (profile.fieldOfStudy) parts.push(`Étudiant en ${profile.fieldOfStudy}`);
-      if (profile.studyYear) parts.push(profile.studyYear);
-      if (profile.school) parts.push(`(${profile.school})`);
-      return parts.length > 0 ? parts.join(' — ') : 'Étudiant dans l\'enseignement supérieur';
+  ngOnInit(): void {
+    const user = this.auth.currentUser;
+    if (user && (!this.profileService.currentProfile || !this.profileService.currentProfile.onboardingCompleted)) {
+      this.profileService.loadProfileFromDatabase(user);
     }
+  }
+
+  getSubtitle(profile: UserProfile): string {
+    if (!profile.educationLevel) return 'Bienvenue sur ton espace d\'apprentissage';
     return `Élève en ${profile.educationLevel}`;
   }
 
@@ -53,10 +53,8 @@ export class DashboardComponent {
   }
 
   getGlobalProgress(profile: UserProfile): string {
-    if (profile.diagnosticResults?.overallScore !== undefined) {
-      return `${profile.diagnosticResults.overallScore}%`;
-    }
-    return 'Diagnostic à effectuer';
+    const prog = profile.progress?.globalProgress ?? 0;
+    return `${prog}%`;
   }
 
   hasStyle(profile: UserProfile, style: string): boolean {

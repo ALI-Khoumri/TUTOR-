@@ -1,4 +1,4 @@
-﻿import { Injectable } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, tap, catchError, of } from 'rxjs';
 import { Router } from '@angular/router';
@@ -24,11 +24,20 @@ export class AuthService {
   private _user = new BehaviorSubject<AuthUser | null>(this.decodeStoredToken());
   readonly user$: Observable<AuthUser | null> = this._user.asObservable();
 
-  constructor(private http: HttpClient, private router: Router) {}
+  constructor(private http: HttpClient, private router: Router) {
+    // Clear legacy persistent tokens so opening localhost always prompts to log in
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem('tutorai.auth.token');
+    }
+  }
 
   get currentUser(): AuthUser | null { return this._user.value; }
   get isLoggedIn(): boolean { return !!this._user.value; }
-  get token(): string | null { return localStorage.getItem(TOKEN_KEY); }
+  get token(): string | null {
+    if (typeof sessionStorage === 'undefined') return null;
+    return sessionStorage.getItem(TOKEN_KEY);
+  }
   get studentId(): string | null { return this._user.value?.studentId ?? null; }
   get name(): string { return this._user.value?.firstName ?? ''; }
 
@@ -45,7 +54,8 @@ export class AuthService {
   }
 
   logout() {
-    localStorage.removeItem(TOKEN_KEY);
+    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(TOKEN_KEY);
+    if (typeof localStorage !== 'undefined') localStorage.removeItem(TOKEN_KEY);
     this._user.next(null);
     void this.router.navigateByUrl('/login');
   }
@@ -57,7 +67,7 @@ export class AuthService {
       { headers: { Authorization: `Bearer ${this.token}` } }
     ).pipe(
       tap(res => {
-        localStorage.setItem(TOKEN_KEY, res.token);
+        if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(TOKEN_KEY, res.token);
         const decoded = this.decodeJwt(res.token);
         if (decoded) this._user.next(decoded);
       })
@@ -80,12 +90,13 @@ export class AuthService {
   }
 
   private handleAuthResponse(res: AuthResponse) {
-    localStorage.setItem(TOKEN_KEY, res.token);
+    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(TOKEN_KEY, res.token);
     this._user.next(res.user);
   }
 
   private decodeStoredToken(): AuthUser | null {
-    const token = localStorage.getItem(TOKEN_KEY);
+    if (typeof sessionStorage === 'undefined') return null;
+    const token = sessionStorage.getItem(TOKEN_KEY);
     return token ? this.decodeJwt(token) : null;
   }
 
@@ -94,7 +105,7 @@ export class AuthService {
       const payload = JSON.parse(atob(token.split('.')[1]));
       if (!payload || !payload.id) return null;
       if (payload.exp && payload.exp * 1000 < Date.now()) {
-        localStorage.removeItem(TOKEN_KEY);
+        if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(TOKEN_KEY);
         return null;
       }
       return {

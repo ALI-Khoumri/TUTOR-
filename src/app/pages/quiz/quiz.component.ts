@@ -15,8 +15,8 @@ import { MatIconModule } from '@angular/material/icon';
       <header class="learning-page__header">
         <div>
           <div class="header-badge-row">
-            <span class="ai-tutor-badge">
-              <mat-icon>psychology</mat-icon> Propulsé par le Tuteur IA
+            <span class="ai-tutor-badge" [class.is-ollama]="isOllamaGenerated">
+              <mat-icon>{{ isOllamaGenerated ? 'psychology' : 'auto_awesome' }}</mat-icon> {{ generatedBy }}
             </span>
             <span class="adaptive-badge" [class.tier-1]="adaptiveLevelIndex === 1" [class.tier-2]="adaptiveLevelIndex === 2" [class.tier-3]="adaptiveLevelIndex === 3">
               <mat-icon>{{ adaptiveLevelIndex === 3 ? 'military_tech' : adaptiveLevelIndex === 2 ? 'trending_up' : 'school' }}</mat-icon>
@@ -63,7 +63,7 @@ import { MatIconModule } from '@angular/material/icon';
             </div>
             <div class="pulse-ring"></div>
           </div>
-          <h3 class="loading-title">Le Tuteur IA prépare ton quiz adaptatif...</h3>
+          <h3 class="loading-title">Le Tuteur IA (Ollama llama3.2) génère ton quiz adaptatif...</h3>
           <p class="loading-sub">
             Génération de questions inédites de niveau <strong>{{ currentDifficulty }}</strong> en <strong>{{ currentSubject }}</strong>
             <span *ngIf="customTopic"> (Thème : {{ customTopic }})</span>.
@@ -200,11 +200,11 @@ import { MatIconModule } from '@angular/material/icon';
                 <span>Palier adaptatif</span>
               </div>
             </div>
-            <div class="meta-box">
+            <div class="meta-box highlight-ollama">
               <mat-icon>psychology</mat-icon>
               <div>
-                <strong>Explications IA</strong>
-                <span>Feedback immédiat du Tuteur</span>
+                <strong>Tuteur IA (Ollama llama3.2)</strong>
+                <span>Génération active en direct</span>
               </div>
             </div>
           </div>
@@ -214,7 +214,7 @@ import { MatIconModule } from '@angular/material/icon';
               <mat-icon>play_arrow</mat-icon> Démarrer le quiz
             </button>
             <button class="btn btn--secondary btn--large" (click)="loadNewAiQuiz()">
-              <mat-icon>refresh</mat-icon> Générer d'autres questions IA
+              <mat-icon>refresh</mat-icon> Générer d'autres questions avec Ollama
             </button>
           </div>
         </div>
@@ -229,6 +229,9 @@ import { MatIconModule } from '@angular/material/icon';
               <span class="quiz-diff-badge" [class.tier-1]="currentDifficulty === 'Débutant'" [class.tier-2]="currentDifficulty === 'Intermédiaire'" [class.tier-3]="currentDifficulty === 'Avancé'">
                 {{ currentDifficulty }}
               </span>
+              <span class="quiz-source-tag">
+                <mat-icon>psychology</mat-icon> Tuteur IA (Ollama)
+              </span>
               <span class="quiz-subject-tag">{{ currentSubject }}</span>
               <span class="quiz-topic-tag" *ngIf="currentTopic">{{ currentTopic }}</span>
             </div>
@@ -239,7 +242,7 @@ import { MatIconModule } from '@angular/material/icon';
           </div>
 
           <div class="quiz-question-box">
-            <h4 class="quiz-question-title">{{ currentQuestion.question }}</h4>
+            <h4 class="quiz-question-title" [class.arabic-font]="isArabicText(currentQuestion.question)" [attr.dir]="isArabicText(currentQuestion.question) ? 'rtl' : 'ltr'">{{ currentQuestion.question }}</h4>
 
             <div class="quiz-options-list">
               <button
@@ -253,7 +256,7 @@ import { MatIconModule } from '@angular/material/icon';
                 (click)="answerQuestion(i)"
               >
                 <span class="option-letter">{{ ['A', 'B', 'C', 'D'][i] }}</span>
-                <span class="option-text">{{ opt }}</span>
+                <span class="option-text" [class.arabic-font]="isArabicText(opt)" [attr.dir]="isArabicText(opt) ? 'rtl' : 'ltr'">{{ opt }}</span>
                 <span class="option-feedback" *ngIf="hasAnswered">
                   <mat-icon *ngIf="i === currentQuestion.correctIndex" class="feedback-icon icon-correct">check_circle</mat-icon>
                   <mat-icon *ngIf="selectedAnswerIndex === i && i !== currentQuestion.correctIndex" class="feedback-icon icon-wrong">cancel</mat-icon>
@@ -269,7 +272,7 @@ import { MatIconModule } from '@angular/material/icon';
               <span *ngIf="selectedAnswerIndex === currentQuestion.correctIndex">Excellente réponse !</span>
               <span *ngIf="selectedAnswerIndex !== currentQuestion.correctIndex">Analyse du Tuteur IA :</span>
             </div>
-            <p class="explanation-text">{{ currentQuestion.explanation }}</p>
+            <p class="explanation-text" [class.arabic-font]="isArabicText(currentQuestion.explanation)" [attr.dir]="isArabicText(currentQuestion.explanation) ? 'rtl' : 'ltr'">{{ formatQuizExplanation(currentQuestion.explanation, selectedAnswerIndex === currentQuestion.correctIndex) }}</p>
 
             <button class="btn btn--primary btn--next" (click)="nextQuestion()">
               <span *ngIf="currentIndex + 1 === currentQuestions.length">Terminer & Bilan du Tuteur</span>
@@ -345,7 +348,7 @@ import { MatIconModule } from '@angular/material/icon';
                 <span class="ans-expected" *ngIf="!res.isCorrect">Réponse exacte : <strong>{{ res.question.options[res.question.correctIndex] }}</strong></span>
               </div>
               <div class="review-explanation" *ngIf="!res.isCorrect">
-                <mat-icon>info</mat-icon> {{ res.question.explanation }}
+                <mat-icon>info</mat-icon> {{ formatQuizExplanation(res.question.explanation, false) }}
               </div>
             </div>
           </div>
@@ -388,6 +391,13 @@ import { MatIconModule } from '@angular/material/icon';
       background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(124, 58, 237, 0.12));
       color: #2563eb;
       border: 1px solid rgba(37, 99, 235, 0.25);
+    }
+
+    .ai-tutor-badge.is-ollama {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(37, 99, 235, 0.15));
+      color: #059669;
+      border-color: rgba(16, 185, 129, 0.35);
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.12);
     }
 
     .ai-tutor-badge mat-icon {
@@ -531,6 +541,12 @@ import { MatIconModule } from '@angular/material/icon';
       border: 1px solid var(--border);
       box-shadow: var(--shadow-sm);
       min-height: 380px;
+    }
+
+    .arabic-font {
+      font-family: 'Amiri', 'Cairo', serif;
+      line-height: 1.85;
+      letter-spacing: 0.01em;
     }
 
     /* Adaptive Tier Card */
@@ -900,6 +916,35 @@ import { MatIconModule } from '@angular/material/icon';
     .meta-box span {
       font-size: 0.78rem;
       color: var(--text-muted);
+    }
+
+    .meta-box.highlight-ollama {
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(16, 185, 129, 0.08));
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      box-shadow: 0 2px 10px rgba(16, 185, 129, 0.1);
+    }
+
+    .meta-box.highlight-ollama mat-icon {
+      color: #059669;
+    }
+
+    .quiz-source-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(16, 185, 129, 0.1));
+      color: #059669;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .quiz-source-tag mat-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
     }
 
     .intro-actions {
@@ -1365,7 +1410,101 @@ export class QuizComponent implements OnInit {
   profile$ = this.profile.active$;
   session$ = this.session.session$;
 
-  currentSubject = 'Langue arabe';
+  isArabicText(text: string | null | undefined): boolean {
+    if (!text) return false;
+    return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(String(text));
+  }
+
+  formatQuizExplanation(explanation: string | null | undefined, isCorrect: boolean): string {
+    if (!explanation) return '';
+    const raw = String(explanation).trim();
+
+    // Nettoyer tout préfixe de félicitation statique (Bravo, Félicitations, أحسنت, Well done, etc.)
+    const cleaned = raw
+      .replace(/^(bravo|félicitations|felicitations|bien joué|super|excellent|très bien|tres bien|well done|great job)\s*[!.:,-]*\s*/i, '')
+      .replace(/^(أحسنت|ممتاز|بارك الله فيك|رائع|عمل رائع)\s*[!.:,-،]*\s*/u, '')
+      .trim();
+
+    const isArabic = this.isArabicText(cleaned || raw);
+
+    if (isCorrect) {
+      if (isArabic) {
+        return `أحسنت ! ${cleaned}`;
+      }
+      return `Bravo ! ${cleaned}`;
+    } else {
+      // En cas de réponse fausse, JAMAIS de bravo !
+      return cleaned;
+    }
+  }
+
+  private normalizeForSimilarity(str: string = ''): string {
+    return String(str || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[\u064B-\u065F\u0670]/g, '')
+      .replace(/[^a-z0-9\s\u0600-\u06FF]/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private calculateQuestionSimilarity(q1: string, q2: string): number {
+    const norm1 = this.normalizeForSimilarity(q1);
+    const norm2 = this.normalizeForSimilarity(q2);
+    if (!norm1 || !norm2) return 0;
+    if (norm1 === norm2) return 1.0;
+
+    const tokens1 = norm1.split(' ').filter(w => w.length > 1);
+    const tokens2 = norm2.split(' ').filter(w => w.length > 1);
+    if (tokens1.length === 0 || tokens2.length === 0) return 0;
+
+    const set1 = new Set(tokens1);
+    const set2 = new Set(tokens2);
+
+    let intersection = 0;
+    for (const t of set1) {
+      if (set2.has(t)) intersection++;
+    }
+    const union = new Set([...set1, ...set2]).size;
+    const tokenJaccard = union > 0 ? intersection / union : 0;
+
+    const getBigrams = (s: string) => {
+      const bg = new Set<string>();
+      const clean = s.replace(/\s+/g, '');
+      for (let i = 0; i < clean.length - 1; i++) {
+        bg.add(clean.slice(i, i + 2));
+      }
+      return bg;
+    };
+    const bg1 = getBigrams(norm1);
+    const bg2 = getBigrams(norm2);
+    let bgOverlap = 0;
+    for (const b of bg1) {
+      if (bg2.has(b)) bgOverlap++;
+    }
+    const bigramDice = (bg1.size + bg2.size) > 0 ? (2 * bgOverlap) / (bg1.size + bg2.size) : 0;
+
+    return Math.max(tokenJaccard, bigramDice * 0.9);
+  }
+
+  private isQuestionDuplicateClient(candidateText: string, existingQuestions: (QuizItem | string)[], threshold = 0.52): boolean {
+    if (!candidateText || typeof candidateText !== 'string') return true;
+    const norm = this.normalizeForSimilarity(candidateText);
+    if (norm.length < 6) return true;
+
+    for (const existing of existingQuestions) {
+      const exText = typeof existing === 'string' ? existing : existing?.question;
+      if (!exText) continue;
+      const sim = this.calculateQuestionSimilarity(candidateText, exText);
+      if (sim >= threshold) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  currentSubject = '';
   customTopic = '';
   currentTopic = '';
   
@@ -1375,6 +1514,11 @@ export class QuizComponent implements OnInit {
   adaptiveLevelIndex = 1;
   selectedDifficultyMode: 'auto' | 'Débutant' | 'Intermédiaire' | 'Avancé' = 'auto';
   selectedQuestionCount: 5 | 10 | 15 = 10;
+  generatedBy: string = 'Tuteur IA (Ollama llama3.2)';
+
+  get isOllamaGenerated(): boolean {
+    return (this.generatedBy || '').includes('Ollama');
+  }
 
   quizState: 'idle' | 'playing' | 'finished' = 'idle';
   isLoadingAi = false;
@@ -1403,8 +1547,10 @@ export class QuizComponent implements OnInit {
     });
 
     this.profile.active$.subscribe(p => {
-      if (p && p.subjects && p.subjects.length > 0 && !this.currentSubject) {
-        this.currentSubject = p.subjects[0];
+      if (p && p.subjects && p.subjects.length > 0) {
+        if (!this.currentSubject || !p.subjects.includes(this.currentSubject)) {
+          this.currentSubject = p.subjects[0];
+        }
       }
       this.loadAdaptiveDifficulty();
       if (this.currentQuestions.length === 0) {
@@ -1476,11 +1622,34 @@ export class QuizComponent implements OnInit {
 
     this.aiLearning.generateQuiz(this.currentSubject, this.customTopic || undefined, diffToRequest, this.selectedQuestionCount).subscribe({
       next: (res) => {
-        const validQs = (res.questions || []).filter(q => {
-          return q && q.question && Array.isArray(q.options) && q.options.length >= 4 &&
-            !q.options.some(opt => /^(choix|option)\s*[a-d\d]+$/i.test((opt || '').trim()));
-        });
-        this.currentQuestions = validQs.length >= 2 ? validQs : (res.questions || []);
+        this.generatedBy = res.generatedBy || 'Tuteur IA (Ollama llama3.2)';
+        const validQs: QuizItem[] = [];
+        for (const q of (res.questions || [])) {
+          if (!q || !q.question || !Array.isArray(q.options) || q.options.length < 4) continue;
+          if (q.options.some(opt => /^(choix|option)\s*[a-d\d]+$/i.test((opt || '').trim()))) continue;
+
+          // Reject question if semantically too similar to any question already chosen
+          if (this.isQuestionDuplicateClient(q.question, validQs, 0.52)) {
+            continue;
+          }
+          validQs.push(q);
+        }
+
+        // STRICT INVARIANT: Always guarantee EXACTLY selectedQuestionCount questions with 0 duplicates
+        let finalQs: QuizItem[] = [...validQs];
+
+        // Backfill from certified emergency bank ONLY if short, with strict uniqueness check
+        if (finalQs.length < this.selectedQuestionCount) {
+          const emergency = this.aiLearning.generateEmergencyQuestions(this.currentSubject, this.currentDifficulty, this.selectedQuestionCount * 2);
+          for (const em of emergency) {
+            if (finalQs.length >= this.selectedQuestionCount) break;
+            if (!this.isQuestionDuplicateClient(em.question, finalQs, 0.50)) {
+              finalQs.push(em);
+            }
+          }
+        }
+
+        this.currentQuestions = finalQs.slice(0, this.selectedQuestionCount);
         this.currentTopic = res.topic;
         this.currentDifficulty = res.difficulty || res.adaptiveDifficulty || 'Débutant';
         if (res.adaptiveDifficulty) {
@@ -1494,7 +1663,12 @@ export class QuizComponent implements OnInit {
       },
       error: (err) => {
         console.warn('Failed to load AI quiz, retrying with fallback:', err);
+        const fallback = this.aiLearning.generateEmergencyQuestions(this.currentSubject, this.currentDifficulty, this.selectedQuestionCount);
+        this.currentQuestions = fallback.slice(0, this.selectedQuestionCount);
         this.isLoadingAi = false;
+        if (autoStart) {
+          this.startQuiz();
+        }
       }
     });
   }
@@ -1558,13 +1732,15 @@ export class QuizComponent implements OnInit {
             this.currentDifficulty = this.adaptiveDifficulty;
           }
         }
+        // Refresh real-time profile stats for Dashboard, Subjects and Progress pages
+        this.profile.loadProfileFromDatabase();
       },
       error: () => {}
     });
   }
 
   restartQuiz(): void {
-    this.quizState = 'idle';
+    this.quizState = 'playing';
     this.currentIndex = 0;
     this.score = 0;
     this.selectedAnswerIndex = null;

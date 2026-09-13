@@ -16,34 +16,48 @@ import { parseQuizFromText, ParsedTutorContent, QuizQuestion, QuizOption } from 
           <mat-icon>smart_toy</mat-icon>
         </div>
         
-        <div class="bubble">
+        <div class="bubble" [class.is-arabic-msg]="isArabicText(m.text)">
           <!-- Normal Conversation Message -->
           <ng-container *ngIf="m.author === 'student' || !getParsed(m.text).isQuiz">
-            <div class="plain-text" [innerHTML]="formatText(m.text)"></div>
+            <div
+              class="plain-text"
+              [class.arabic-font]="isArabicText(m.text)"
+              [attr.dir]="isArabicText(m.text) ? 'rtl' : 'ltr'"
+              [innerHTML]="formatText(m.text)"
+            ></div>
           </ng-container>
 
           <!-- Interactive Quiz Card -->
           <ng-container *ngIf="m.author === 'tutor' && getParsed(m.text).isQuiz">
             <div class="quiz-container">
               <!-- Intro greeting -->
-              <p class="quiz-intro" *ngIf="getParsed(m.text).introText">
+              <p
+                class="quiz-intro"
+                *ngIf="getParsed(m.text).introText"
+                [class.arabic-font]="isArabicText(getParsed(m.text).introText)"
+                [attr.dir]="isArabicText(getParsed(m.text).introText) ? 'rtl' : 'ltr'"
+              >
                 {{ getParsed(m.text).introText }}
               </p>
 
               <!-- List of Questions -->
               <div class="quiz-questions-list">
-                <div *ngFor="let q of getParsed(m.text).questions; let qi = index" class="quiz-card">
+                <div
+                  *ngFor="let q of getParsed(m.text).questions; let qi = index"
+                  class="quiz-card"
+                  [attr.dir]="isArabicText(q.questionText) ? 'rtl' : 'ltr'"
+                >
                   <div class="quiz-card-top">
                     <div class="quiz-badge">
                       <mat-icon>quiz</mat-icon>
-                      <span>Question {{ q.questionNumber }}</span>
+                      <span>{{ isArabicText(q.questionText) ? ('السؤال ' + q.questionNumber) : ('Question ' + q.questionNumber) }}</span>
                     </div>
                     <span class="quiz-counter" *ngIf="getParsed(m.text).questions.length > 1">
-                      {{ qi + 1 }} sur {{ getParsed(m.text).questions.length }}
+                      {{ qi + 1 }} {{ isArabicText(q.questionText) ? 'من' : 'sur' }} {{ getParsed(m.text).questions.length }}
                     </span>
                   </div>
 
-                  <p class="quiz-question-title">{{ q.questionText }}</p>
+                  <p class="quiz-question-title" [class.arabic-font]="isArabicText(q.questionText)">{{ q.questionText }}</p>
 
                   <div class="quiz-options-grid">
                     <button
@@ -51,6 +65,7 @@ import { parseQuizFromText, ParsedTutorContent, QuizQuestion, QuizOption } from 
                       type="button"
                       class="quiz-option-btn"
                       [class.is-selected]="q.selectedLetter === opt.letter"
+                      [class.arabic-font]="isArabicText(opt.text)"
                       (click)="chooseOption(q, opt)"
                     >
                       <span class="opt-letter">{{ opt.letter }}</span>
@@ -322,6 +337,14 @@ import { parseQuizFromText, ParsedTutorContent, QuizQuestion, QuizOption } from 
       border-color: #16a34a;
     }
 
+    .arabic-font {
+      font-family: 'Amiri', 'Cairo', 'Segoe UI', Tahoma, sans-serif !important;
+      direction: rtl;
+      text-align: right;
+      font-size: 1.05rem;
+      line-height: 1.85;
+    }
+
     @keyframes msgIn {
       from {
         opacity: 0;
@@ -339,6 +362,11 @@ export class TutorMessageListComponent {
   private parsedCache = new Map<string, ParsedTutorContent>();
 
   constructor(private mock: MockSessionService) {}
+
+  isArabicText(text?: string): boolean {
+    if (!text) return false;
+    return /[\u0600-\u06FF]/.test(text);
+  }
 
   getParsed(text: string): ParsedTutorContent {
     if (!this.parsedCache.has(text)) {

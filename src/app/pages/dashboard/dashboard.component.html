@@ -29,10 +29,10 @@
           <mat-icon class="stat-icon">trending_up</mat-icon>
         </div>
         <span class="stat-card__value">{{ getGlobalProgress(profile) }}</span>
-        <div class="progress-bar" *ngIf="profile.diagnosticResults" style="margin-top: 0.5rem;">
-          <div class="progress-bar__fill" [style.width.%]="profile.diagnosticResults.overallScore"></div>
+        <div class="progress-bar" style="margin-top: 0.5rem;">
+          <div class="progress-bar__fill" [style.width.%]="profile.progress?.globalProgress || 0"></div>
         </div>
-        <span class="stat-card__sub" *ngIf="!profile.diagnosticResults">Évaluée au fil de tes sessions</span>
+        <span class="stat-card__sub">Évolue avec tes exercices, quiz et cours</span>
       </div>
 
       <!-- Card 2: Matière actuelle -->

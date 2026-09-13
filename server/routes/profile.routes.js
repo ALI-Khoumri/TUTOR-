@@ -1,10 +1,27 @@
 const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
+const jwt = require('jsonwebtoken');
 const { getPool } = require('../database/db');
 
+const JWT_SECRET = process.env.JWT_SECRET || 'tutorai-secret-key-change-in-prod-2025';
+
 function getStudentId(req) {
-  return req.headers['x-student-id'] || 'default-student';
+  const headerId = req.headers['x-student-id'];
+  if (headerId && headerId !== 'default-student' && headerId !== 'null' && headerId !== 'undefined') {
+    return headerId;
+  }
+  // Try extracting from Authorization JWT header if available
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const decoded = jwt.verify(authHeader.slice(7), JWT_SECRET);
+      if (decoded && (decoded.studentId || decoded.id)) {
+        return decoded.studentId || decoded.id;
+      }
+    } catch (_) {}
+  }
+  return headerId || 'default-student';
 }
 
 /**
@@ -13,11 +30,39 @@ function getStudentId(req) {
  */
 router.get('/', async (req, res) => {
   try {
-    const studentId = getStudentId(req);
+    let studentId = getStudentId(req);
     const pool = getPool();
 
-    const [studentRows] = await pool.query('SELECT * FROM students WHERE id = ?', [studentId]);
-    const student = studentRows[0];
+    let [studentRows] = await pool.query('SELECT * FROM students WHERE id = ?', [studentId]);
+    let student = studentRows[0];
+
+    // Fallback 1: if studentId is a user id, check if it points to a student
+    if (!student) {
+      const [userRows] = await pool.query('SELECT student_id FROM users WHERE id = ?', [studentId]);
+      if (userRows.length > 0 && userRows[0].student_id) {
+        studentId = userRows[0].student_id;
+        const [linkedRows] = await pool.query('SELECT * FROM students WHERE id = ?', [studentId]);
+        student = linkedRows[0];
+      }
+    }
+
+    // Fallback 2: if still not found, check JWT user id from Authorization header
+    if (!student && req.headers['authorization']) {
+      try {
+        const authHeader = req.headers['authorization'].replace(/^Bearer\s+/i, '');
+        const decoded = jwt.verify(authHeader, JWT_SECRET);
+        if (decoded && decoded.id) {
+          const [uRows] = await pool.query('SELECT student_id FROM users WHERE id = ?', [decoded.id]);
+          if (uRows.length > 0 && uRows[0].student_id) {
+            const [sRows] = await pool.query('SELECT * FROM students WHERE id = ?', [uRows[0].student_id]);
+            if (sRows.length > 0) {
+              student = sRows[0];
+              studentId = student.id;
+            }
+          }
+        }
+      } catch (_) {}
+    }
 
     if (!student || !student.onboarding_completed) {
       return res.json({
@@ -72,7 +117,6 @@ router.get('/', async (req, res) => {
     const diagnostic = diagRows[0];
 
     let diagnosticResults = null;
-    let currentLevels = {};
     if (diagnostic) {
       diagnosticResults = {
         overallScore: diagnostic.score,
@@ -88,22 +132,59 @@ router.get('/', async (req, res) => {
           if (parsed.recommendations) diagnosticResults.recommendations = parsed.recommendations;
         } catch (e) {}
       }
-      Object.keys(diagnosticResults.subjectScores).forEach(subj => {
-        currentLevels[subj] = diagnosticResults.subjectScores[subj] / 100;
-      });
     }
 
-    // 6. Progress stats
-    const [progressRows] = await pool.query('SELECT * FROM progress WHERE student_id = ?', [studentId]);
+    // 6. Real Progress stats from progress table (starts at 0% and progresses with practice)
+    const [progressRows] = await pool.query(`
+      SELECT p.*, s.name as subject_name
+      FROM progress p
+      LEFT JOIN subjects s ON s.id = p.subject_id
+      WHERE p.student_id = ?
+    `, [studentId]);
+
     let exercisesCount = 0;
     let quizCount = 0;
+    const currentLevels = {};
+    let totalScoreSum = 0;
+    let evaluatedSubjectsCount = 0;
+
     progressRows.forEach(p => {
       exercisesCount += p.exercises_completed || 0;
       quizCount += p.quizzes_completed || 0;
+      const subj = p.subject_name || p.topic;
+      if (subj) {
+        const ex = p.exercises_completed || 0;
+        const qz = p.quizzes_completed || 0;
+        // Logical score: starts at 0, increases +15% per exercise, +20% per quiz
+        let score = p.score !== null && p.score !== undefined ? p.score : 0;
+        if (score === 0 && (ex > 0 || qz > 0)) {
+          score = Math.min(100, (ex * 15) + (qz * 20));
+        }
+        currentLevels[subj] = Math.min(1, Math.max(0, score / 100));
+        totalScoreSum += score;
+        evaluatedSubjectsCount++;
+      }
     });
+
+    // Ensure all registered subjects exist in currentLevels, default to 0
+    subjectRows.forEach(s => {
+      if (currentLevels[s.name] === undefined) {
+        currentLevels[s.name] = 0;
+        evaluatedSubjectsCount++;
+      }
+    });
+
+    const globalProgress = evaluatedSubjectsCount > 0
+      ? Math.round(totalScoreSum / evaluatedSubjectsCount)
+      : 0;
 
     const parsedGoals = learningProfile?.goals ? JSON.parse(learningProfile.goals) : goals;
     const parsedStyles = learningProfile?.learning_preferences ? JSON.parse(learningProfile.learning_preferences) : [];
+
+    const totalMinutes = (exercisesCount * 10) + (quizCount * 5);
+    const studyHours = Math.floor(totalMinutes / 60);
+    const studyMins = totalMinutes % 60;
+    const studyTimeTotal = studyHours > 0 ? `${studyHours}h ${studyMins}m` : `${studyMins}m`;
 
     const response = {
       id: student.id,
@@ -130,10 +211,10 @@ router.get('/', async (req, res) => {
       currentLevels,
       diagnosticResults,
       progress: {
-        globalProgress: diagnosticResults?.overallScore || 0,
+        globalProgress,
         exercisesCompleted: exercisesCount,
         quizCompleted: quizCount,
-        studyTimeTotal: '0h'
+        studyTimeTotal
       },
       weakTopics: diagnosticResults?.weaknesses || [],
       strongTopics: diagnosticResults?.strengths || []
@@ -279,18 +360,26 @@ router.post(['/onboarding/complete', '/complete'], async (req, res) => {
         JSON.stringify([])
       ]);
 
-      await connection.query(`
-        INSERT INTO progress (
-          id, student_id, subject_id, topic, score, mastery_level, exercises_completed, quizzes_completed
-        ) VALUES (?, ?, ?, ?, ?, ?, 0, 0)
-      `, [
-        uuidv4(),
-        studentId,
-        subjectId,
-        primarySubjectName || 'Général',
-        diagnosticResults.overallScore || 0,
-        diagnosticResults.overallScore >= 75 ? 'intermediate' : diagnosticResults.overallScore >= 50 ? 'developing' : 'beginner'
-      ]);
+      // Initial progress starts at 0% for all enrolled subjects
+      const subjectsToInit = (Array.isArray(subjects) && subjects.length > 0) ? subjects : [primarySubjectName || 'Général'];
+      for (const subjName of subjectsToInit) {
+        let curSubjId = null;
+        try {
+          const [sRows] = await connection.query('SELECT id FROM subjects WHERE name = ?', [subjName]);
+          if (sRows.length > 0) curSubjId = sRows[0].id;
+        } catch (_) {}
+
+        await connection.query(`
+          INSERT INTO progress (
+            id, student_id, subject_id, topic, score, mastery_level, exercises_completed, quizzes_completed
+          ) VALUES (?, ?, ?, ?, 0, 'not_started', 0, 0)
+        `, [
+          uuidv4(),
+          studentId,
+          curSubjId,
+          subjName
+        ]);
+      }
 
       if (diagnosticResults.strengths?.length > 0) {
         await connection.query(`
@@ -309,6 +398,14 @@ router.post(['/onboarding/complete', '/complete'], async (req, res) => {
 
     await connection.commit();
     connection.release();
+
+    // Ensure user record is linked to student_id and has first_name
+    try {
+      await pool.query(
+        'UPDATE users SET student_id = ?, first_name = COALESCE(first_name, ?) WHERE id = ? OR student_id = ?',
+        [studentId, firstName.trim(), studentId, studentId]
+      );
+    } catch (_) {}
 
     console.log(`[API /api/onboarding/complete] Successfully saved profile for student ${studentId} in MySQL.`);
     res.json({ success: true, studentId, message: 'Onboarding completed and saved to MySQL.' });

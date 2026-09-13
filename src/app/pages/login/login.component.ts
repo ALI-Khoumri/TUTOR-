@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -12,7 +12,7 @@ import { ProfileService } from '../../core/services/profile.service';
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss']
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   email = '';
   password = '';
   showPassword = false;
@@ -21,7 +21,7 @@ export class LoginComponent {
 
   features = [
     { icon: '🤖', text: 'Tuteur IA adapté à ton niveau' },
-    { icon: '📚', text: 'Système scolaire marocain (Primaire → Bac → Sup)' },
+    { icon: '📚', text: 'Système scolaire marocain (Primaire & Collège • 6 à 15 ans)' },
     { icon: '📊', text: 'Suivi de progression personnalisé' },
     { icon: '🏆', text: 'Quiz, exercices et explications détaillées' },
   ];
@@ -31,6 +31,12 @@ export class LoginComponent {
     private profileService: ProfileService,
     private router: Router
   ) {}
+
+  ngOnInit() {
+    if (this.auth.isLoggedIn) {
+      void this.router.navigateByUrl('/dashboard', { replaceUrl: true });
+    }
+  }
 
   get canSubmit(): boolean {
     return this.email.trim().length > 0 && this.password.length >= 6 && !this.loading();

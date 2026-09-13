@@ -33,9 +33,9 @@ export class SidebarComponent implements OnInit, OnDestroy {
     { label: 'Tableau de bord', icon: 'dashboard', route: '/dashboard' },
     { label: 'Tuteur IA', icon: 'smart_toy', route: '/tutor' },
     { label: 'Matières', icon: 'menu_book', route: '/subjects' },
-    { label: 'Cours', icon: 'school', route: '/course', requiresStyle: ['Explications simples', 'Explications détaillées', 'Exemples', 'Résumés'] },
+    { label: 'Cours', icon: 'school', route: '/course' },
     { label: 'Exercices', icon: 'fitness_center', route: '/exercises', requiresStyle: ['Exercices'] },
-    { label: 'Quiz', icon: 'quiz', route: '/quiz', requiresStyle: ['Quiz', 'Questions/réponses'] },
+    { label: 'Quiz', icon: 'quiz', route: '/quiz', requiresStyle: ['Quiz'] },
     { label: 'Progression', icon: 'trending_up', route: '/progress' },
     { label: 'Profil', icon: 'person', route: '/profile' },
     { label: 'Paramètres', icon: 'settings', route: '/settings' }

@@ -1,4 +1,4 @@
-﻿import { Component, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { ProfileService } from '../../core/services/profile.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -15,12 +15,25 @@ export class RouteRedirectComponent implements OnInit {
     private auth: AuthService
   ) {}
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     if (!this.auth.isLoggedIn) {
       void this.router.navigateByUrl('/login', { replaceUrl: true });
       return;
     }
-    const target = this.profile.isOnboardingComplete() ? '/dashboard' : '/onboarding';
-    void this.router.navigateByUrl(target, { replaceUrl: true });
+
+    try {
+      // Check in-memory profile first
+      let isComplete = this.profile.isOnboardingComplete();
+      if (!isComplete && this.auth.currentUser) {
+        // Await fresh profile from backend
+        const p = await this.profile.loadProfileFromDatabase(this.auth.currentUser);
+        isComplete = !!(p && p.onboardingCompleted && (p.firstName || p.name));
+      }
+
+      const target = isComplete ? '/dashboard' : '/onboarding';
+      void this.router.navigateByUrl(target, { replaceUrl: true });
+    } catch {
+      void this.router.navigateByUrl('/onboarding', { replaceUrl: true });
+    }
   }
 }

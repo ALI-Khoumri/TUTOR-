@@ -39,7 +39,7 @@
       </div>
     </section>
 
-    <div class="tutor-body">
+    <div class="tutor-body" [class.arabic-mode]="isArabicSubject()">
       <div class="chat-column">
         <app-session-header></app-session-header>
         <app-tutor-canvas></app-tutor-canvas>

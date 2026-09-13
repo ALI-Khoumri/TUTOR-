@@ -1,14 +1,15 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { AsyncPipe } from '@angular/common';
-import { MockProfileService, UserProfile, AnyEducationLevel } from '../../core/services/mock-profile.service';
+import { ProfileService } from '../../core/services/profile.service';
+import { AuthService } from '../../core/services/auth.service';
+import { UserProfile } from '../../core/models/user-profile.model';
 import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, AsyncPipe, FormsModule, MatIconModule],
+  imports: [CommonModule, AsyncPipe, MatIconModule],
   template: `
     <section class="learning-page page-enter" *ngIf="profile$ | async as profile">
       <header class="learning-page__header">
@@ -17,25 +18,16 @@ import { MatIconModule } from '@angular/material/icon';
           <h2 class="learning-page__title">Mon profil</h2>
           <p class="learning-page__copy">Ces informations sont utilisées par le tuteur pour adapter ses explications, exercices et recommandations.</p>
         </div>
-        <div class="learning-page__actions">
-          <button class="btn btn--secondary btn--sm btn--pill" *ngIf="!editing" (click)="startEditing(profile)">
-            <mat-icon>edit</mat-icon> Modifier mon profil
-          </button>
-          <button class="btn btn--primary btn--sm btn--pill" *ngIf="editing" (click)="save()">
-            <mat-icon>check</mat-icon> Enregistrer
-          </button>
-          <button class="btn btn--ghost btn--sm btn--pill" *ngIf="editing" (click)="cancelEdit()">Annuler</button>
-        </div>
       </header>
 
-      <!-- View mode -->
-      <div *ngIf="!editing" class="profile-grid">
+      <!-- Consultation exclusive du profil (lecture seule) -->
+      <div class="profile-grid">
         <div class="profile-card surface">
           <div class="pc-header">
             <div class="pc-avatar">{{ getInitials(profile.firstName || profile.name) }}</div>
             <div class="pc-info">
               <div class="pc-name">{{ profile.firstName || profile.name }}</div>
-              <div class="pc-meta">{{ profile.age }} ans · {{ profile.educationLevel }}</div>
+              <div class="pc-meta">{{ profile.age ? profile.age + ' ans · ' : '' }}{{ profile.educationLevel }}</div>
             </div>
           </div>
           <div class="pc-fields">
@@ -64,16 +56,22 @@ import { MatIconModule } from '@angular/material/icon';
 
         <div class="profile-card surface">
           <div class="pc-title">Matières</div>
-          <div class="pc-tags">
+          <div class="pc-tags" *ngIf="profile.subjects && profile.subjects.length > 0; else noSubjects">
             <span *ngFor="let s of profile.subjects" class="badge badge--accent">{{ s }}</span>
           </div>
+          <ng-template #noSubjects>
+            <span class="pc-empty">Aucune matière sélectionnée</span>
+          </ng-template>
         </div>
 
         <div class="profile-card surface">
           <div class="pc-title">Objectifs</div>
-          <div class="pc-list">
+          <div class="pc-list" *ngIf="profile.objectives && profile.objectives.length > 0; else noObjectives">
             <div *ngFor="let o of profile.objectives" class="pc-list-item">{{ o }}</div>
           </div>
+          <ng-template #noObjectives>
+            <span class="pc-empty">Aucun objectif défini</span>
+          </ng-template>
         </div>
 
         <div class="profile-card surface" *ngIf="profile.difficulties && profile.difficulties.length > 0">
@@ -92,46 +90,6 @@ import { MatIconModule } from '@angular/material/icon';
           <div class="pc-field" *ngIf="profile.studyTime">
             <span class="pc-label">Temps d'étude / jour</span>
             <span class="pc-value">{{ profile.studyTime }}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Edit mode -->
-      <div *ngIf="editing" class="edit-form surface">
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Prénom</label>
-            <input type="text" [(ngModel)]="editData.firstName">
-          </div>
-          <div class="form-group">
-            <label>Âge</label>
-            <input type="number" [(ngModel)]="editData.age" min="5" max="99">
-          </div>
-          <div class="form-group">
-            <label>Pays</label>
-            <input type="text" [(ngModel)]="editData.country">
-          </div>
-          <div class="form-group">
-            <label>Langue</label>
-            <input type="text" [(ngModel)]="editData.language">
-          </div>
-          <div class="form-group form-group--full">
-            <label>Niveau scolaire</label>
-            <select [(ngModel)]="editData.educationLevel">
-              <option *ngFor="let lvl of educationLevels" [value]="lvl">{{ lvl }}</option>
-            </select>
-          </div>
-          <div class="form-group" *ngIf="editData.fieldOfStudy !== undefined">
-            <label>Filière</label>
-            <input type="text" [(ngModel)]="editData.fieldOfStudy">
-          </div>
-          <div class="form-group" *ngIf="editData.school !== undefined">
-            <label>Établissement</label>
-            <input type="text" [(ngModel)]="editData.school">
-          </div>
-          <div class="form-group" *ngIf="editData.studyYear !== undefined">
-            <label>Année d'étude</label>
-            <input type="text" [(ngModel)]="editData.studyYear">
           </div>
         </div>
       </div>
@@ -168,6 +126,12 @@ import { MatIconModule } from '@angular/material/icon';
       justify-content: center;
       font-weight: 700;
       font-size: 1rem;
+    }
+
+    .pc-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
     }
 
     .pc-name {
@@ -244,104 +208,36 @@ import { MatIconModule } from '@angular/material/icon';
       margin: 0;
     }
 
-    /* Edit form */
-    .edit-form {
-      padding: 1.5rem;
-    }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.85rem;
-    }
-
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 0.3rem;
-    }
-
-    .form-group--full {
-      grid-column: 1 / -1;
-    }
-
-    .form-group label {
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: var(--text-secondary);
-    }
-
-    .form-group input,
-    .form-group select {
-      padding: 0.65rem 0.8rem;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-      background: var(--surface-muted);
-      color: var(--text);
-      font-size: 0.9rem;
-    }
-
-    .form-group input:focus,
-    .form-group select:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--focus);
-      outline: none;
+    .pc-empty {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-style: italic;
     }
 
     @media (max-width: 768px) {
       .profile-grid {
         grid-template-columns: 1fr;
       }
-
-      .form-grid {
-        grid-template-columns: 1fr;
-      }
     }
   `]
 })
-export class ProfileComponent {
-  profile$ = this.profile.active$;
-  editing = false;
-  editData: Partial<UserProfile> = {};
+export class ProfileComponent implements OnInit {
+  profile$ = this.profileService.active$;
 
-  educationLevels: AnyEducationLevel[] = [
-    'CP', 'CE1', 'CE2', 'CM1', 'CM2',
-    '6ème', '5ème', '4ème', '3ème',
-    'Seconde', 'Première', 'Terminale',
-    'Université / École supérieure'
-  ];
+  constructor(
+    private profileService: ProfileService,
+    private auth: AuthService
+  ) {}
 
-  constructor(private profile: MockProfileService) {}
+  ngOnInit(): void {
+    const user = this.auth.currentUser;
+    if (user && (!this.profileService.currentProfile || !this.profileService.currentProfile.onboardingCompleted)) {
+      this.profileService.loadProfileFromDatabase(user);
+    }
+  }
 
   getInitials(name?: string): string {
-    if (!name) return '';
+    if (!name) return 'A';
     return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-  }
-
-  startEditing(profile: UserProfile): void {
-    this.editData = {
-      firstName: profile.firstName,
-      age: profile.age,
-      country: profile.country,
-      language: profile.language,
-      educationLevel: profile.educationLevel,
-      fieldOfStudy: profile.fieldOfStudy,
-      school: profile.school,
-      studyYear: profile.studyYear
-    };
-    this.editing = true;
-  }
-
-  cancelEdit(): void {
-    this.editing = false;
-    this.editData = {};
-  }
-
-  async save(): Promise<void> {
-    await this.profile.updateProfile({
-      ...this.editData,
-      name: this.editData.firstName || this.profile.currentProfile.name
-    });
-    this.editing = false;
   }
 }

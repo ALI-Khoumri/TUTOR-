@@ -12,12 +12,36 @@ export const onboardingCompleteGuard: CanMatchFn = async () => {
   const user = authService.currentUser;
   if (!user) return router.createUrlTree(['/login']);
 
-  // Force a fresh load from the database to get the real onboarding status
-  const profile = await profileService.loadProfileFromDatabase(user);
+  // Check in-memory profile first
+  let profile = profileService.currentProfile;
+  if (!profile || !profile.onboardingCompleted || !(profile.firstName || profile.name)) {
+    profile = await profileService.loadProfileFromDatabase(user);
+  }
 
-  if (profile && profile.onboardingCompleted && profile.firstName) {
+  if (profile && profile.onboardingCompleted && (profile.firstName || profile.name)) {
     return true;
   }
 
   return router.createUrlTree(['/onboarding']);
+};
+
+/** Guard that blocks users who already completed onboarding from accessing /onboarding */
+export const onboardingPendingGuard: CanMatchFn = async () => {
+  const profileService = inject(ProfileService);
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  const user = authService.currentUser;
+  if (!user) return router.createUrlTree(['/login']);
+
+  let profile = profileService.currentProfile;
+  if (!profile || !profile.onboardingCompleted || !(profile.firstName || profile.name)) {
+    profile = await profileService.loadProfileFromDatabase(user);
+  }
+
+  if (profile && profile.onboardingCompleted && (profile.firstName || profile.name)) {
+    return router.createUrlTree(['/dashboard']);
+  }
+
+  return true;
 };

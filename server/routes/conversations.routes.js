@@ -190,8 +190,29 @@ router.post('/:id/messages', async (req, res) => {
       const lowerContent = content.toLowerCase();
       const subjectLower = subject.toLowerCase();
       const isEnglish = subjectLower.includes('anglais') || subjectLower.includes('english');
+      const isArabic = subjectLower.includes('arabe') || subjectLower.includes('arabic') || subjectLower.includes('عرب');
+      const isIslam = subjectLower.includes('islam') || subjectLower.includes('coran') || subjectLower.includes('دين') || subjectLower.includes('tarbiya') || subjectLower.includes('إسلام');
 
-      if (isEnglish) {
+      if (isArabic || isIslam) {
+        const subjectAr = isIslam ? 'التَّرْبِيَةِ الإِسْلاَمِيَّةِ' : 'اللُّغَةِ العَرَبِيَّةِ';
+        if (lowerContent.includes('expliquer') || lowerContent.includes('différemment') || lowerContent.includes('comprends pas') || lowerContent.includes('شرح') || lowerContent.includes('فهم') || lowerContent.includes('بسط')) {
+          tutorReply = `مَرْحَباً بِكَ يَا ${firstName} ! 😊 لاَ تَقْلَقْ أَبَداً، فَكُلُّ مَفْهُومٍ جَدِيدٍ يَحْتَاجُ إِلَى تَأَنٍّ وَخُطُوَاتٍ بَسِيطَةٍ. فِي مَادَّةِ ${subjectAr}، دَعْنَا نُقَسِّمِ الفِكْرَةَ إِلَى جُزْأَيْنِ سَهْلَيْنِ. مَا هُوَ الشَّيْءُ الَّذِي وَجَدْتَ فِيهِ صُعُوبَةً فِي البِدَايَةِ ؟`;
+        } else if (lowerContent.includes('exemple') || lowerContent.includes('مثال') || lowerContent.includes('تطبيق')) {
+          tutorReply = `إِلَيْكَ هَذَا المِثَالَ التَّطْبِيقِيَّ المُمَيَّزَ فِي ${subjectAr} يَا ${firstName} :\n\n📌 **مِثَالٌ تَوْضِيحِيٌّ :**\n> رَكِّزْ عَلَى القَاعِدَةِ الأَسَاسِيَّةِ، وَتَذَكَّرْ أَنَّ التَّطْبِيقَ العَمَلِيَّ يُثَبِّتُ الفَهْمَ السَّلِيمَ فِي الذِّهْنِ.\n\nهَلْ تَرْغَبُ أَنْ نَصُوغَ مِثَالاً آخَرَ مَعاً بِأُسْلُوبِكَ الخَاصِّ ؟`;
+        } else if (lowerContent.includes('erreur') || lowerContent.includes('trouver') || lowerContent.includes('خطأ') || lowerContent.includes('صحيح')) {
+          tutorReply = `شَارِكْنِي إِجَابَتَكَ أَوْ مَا حَاوَلْتَ كِتَابَتَهُ يَا ${firstName}. ارْتِكَابُ الخَطَأِ أَمْرٌ طَبِيعِيٌّ جِدّاً وَهُوَ أَوَّلُ خُطْوَةٍ لِلتَّعَلُّمِ الصَّحِيحِ ! سَنَتَبَيَّنُ مَعاً مَوْضِعَ الصَّوَابِ لِيَصِيرَ الأَمْرُ وَاضِحاً لَدَيْكَ.`;
+        } else if (lowerContent.includes('quiz') || lowerContent.includes('pratiquer') || lowerContent.includes('exercice') || lowerContent.includes('تمرين') || lowerContent.includes('اختبار') || lowerContent.includes('كويز')) {
+          tutorReply = `مُبَادَرَةٌ مُمْتَازَةٌ يَا ${firstName} ! 🎯 إِذَا أَرَدْتَ التَّدَرُّبَ عَلَى التَّمَارِينِ التَّفَاعُلِيَّةِ، تَوَجَّهْ إِلَى قِسْمِ **التَّمَارِينِ** (Exercices)، وَلِلاِخْتِبَارَاتِ السَّرِيعَةِ اضْغَطْ عَلَى **الكُوِيزِ** (Quiz). أَمَّا هُنَا، فَأَنَا مَعَكَ لِشَرْحِ كُلِّ مَا يَصْعُبُ عَلَيْكَ فِي ${subjectAr}. مَا الَّذِي تُرِيدُ أَنْ نُرَاجِعَهُ الآنَ ؟`;
+        } else if (lowerContent.includes('résum') || lowerContent.includes('تلخيص') || lowerContent.includes('ملخص')) {
+          tutorReply = `إِلَيْكَ الخُلاَصَةَ وَالقَوَاعِدَ الذَّهَبِيَّةَ فِي ${subjectAr} يَا ${firstName} :\n\n⭐ **1. الفِكْرَةُ المَرْكَزِيَّةُ :** اقْرَأِ النَّصَّ أَوِ القَاعِدَةَ بِتَمَعُّنٍ وَتَأَنٍّ.\n⭐ **2. المَنْهَجِيَّةُ :** اتَّبِعِ الخُطُوَاتِ المُنَظَّمَةَ وَاضْبِطِ الكَلِمَاتِ بِالشَّكْلِ التَّامِّ.\n⭐ **3. النَّصِيحَةُ :** كُلَّمَا أَشْكَلَ عَلَيْكَ أَمْرٌ، اطْرَحْ سُؤَالَكَ فَوْراً !\n\nهَلْ تُرِيدُ أَنْ نُفَصِّلَ فِي إِحْدَى هَذِهِ النِّقَاطِ ؟`;
+        } else if (lowerContent.includes('avance bien') || lowerContent.includes('progression') || lowerContent.includes('bilan') || lowerContent.includes('تقدم') || lowerContent.includes('مستوى') || lowerContent.includes('حصيلة')) {
+          tutorReply = `أَنْتَ تَبْذُلُ مَجْهُوداً رَائِعاً يَا ${firstName} ! 🌟 فِي كُلِّ مَرَّةٍ تَسْأَلُ وَتُفَكِّرُ، يَرْتَقِي مُسْتَوَاكَ فِي ${subjectAr}. وَاصِلْ عَلَى هَذَا المِنْوَالِ وَلاَ تَنْسَ الاِطِّلاَعَ عَلَى تَفَاصِيلِ نَجَاحَاتِكَ فِي تَبْوِيبِ **المُتَابَعَةِ** (Progression) !`;
+        } else if (lowerContent.includes('vocabulaire') || lowerContent.includes('mot') || lowerContent.includes('مفردات') || lowerContent.includes('معنى') || lowerContent.includes('إعراب')) {
+          tutorReply = `أَحْسَنْتَ يَا ${firstName} ! فِي مَادَّةِ ${subjectAr}، إِثْرَاءُ الرَّصِيدِ اللُّغَوِيِّ وَفَهْمُ دَلاَلاَتِ الكَلِمَاتِ وَإِعْرَابِهَا هُوَ سِرُّ التَّفَوُّقِ. مَا هِيَ الكَلِمَةُ أَوْ الجُمْلَةُ الَّتِي تُرِيدُ أَنْ نَتَدَارَسَهَا مَعاً ؟`;
+        } else {
+          tutorReply = `أَهْلاً وَمَرْحَباً بِكَ يَا ${firstName} فِي مَادَّةِ ${subjectAr} ! أَنَا هُنَا مُرَبِّيكَ الذَّكِيُّ لِمُسَاعَدَتِكَ خُطْوَةً بِخُطْوَةٍ وَتَوْضِيحِ كُلِّ غَامِضٍ بِلُغَةٍ عَرَبِيَّةٍ سَهْلَةٍ وَمُشَكَّلَةٍ. مَا هُوَ المَوْضُوعُ الَّذِي تَوَدُّ أَنْ نَبْدَأَ بِهِ ؟`;
+        }
+      } else if (isEnglish) {
         // English-specific fallback responses
         if (lowerContent.includes('expliquer') || lowerContent.includes('différemment') || lowerContent.includes('comprends pas')) {
           tutorReply = `Bien sûr ${firstName} ! En anglais, essayons une autre approche. Par exemple, si on parle de conjugaison, prenons le présent simple : "I play", "She plays", "They play". Tu remarques le "s" à la 3ème personne du singulier ? Est-ce que cette règle te semble plus claire maintenant ?`;
@@ -211,19 +232,19 @@ router.post('/:id/messages', async (req, res) => {
           tutorReply = `J'ai bien compris ta question sur l'anglais, ${firstName}. En anglais, il est important de pratiquer régulièrement. Dis-moi : préfères-tu qu'on travaille sur la **grammaire** (verbes, temps, structure de phrase), le **vocabulaire**, ou la **compréhension de texte** ?`;
         }
       } else if (lowerContent.includes('expliquer') || lowerContent.includes('différemment') || lowerContent.includes('comprends pas')) {
-        tutorReply = `Avec plaisir ${firstName}. Pour aborder cette notion en ${subject} simplement : imagine que nous décomposons le problème en deux étapes faciles. Quelle est la première étape que tu visualises ?`;
+        tutorReply = `Ne t'inquiète pas du tout, ${firstName} ! C'est tout à fait normal de ne pas comprendre du premier coup. 😊 Pour cette notion en ${subject}, découpons-la en deux étapes très simples. Dis-moi, qu'est-ce qui te paraît le plus difficile au départ ?`;
       } else if (lowerContent.includes('exemple')) {
-        tutorReply = `Voici un exemple d'application concrète en ${subject} adapté à ton niveau (${student ? student.education_level : ''}) : prenons un cas standard pas à pas. Regardons ensemble comment l'énoncé se structure.`;
+        tutorReply = `Voici un exemple imagé et concret en ${subject} pour toi, ${firstName} : imagine une situation de la vie de tous les jours où on utilise cette règle. Prenons les choses pas à pas ensemble !`;
       } else if (lowerContent.includes('erreur') || lowerContent.includes('trouver')) {
-        tutorReply = `Partage-moi ton calcul ou ton raisonnement en ${subject}, et nous allons identifier ensemble précisément la ligne ou le concept qui pose problème.`;
+        tutorReply = `Montre-moi ce que tu as essayé d'écrire ou de calculer, ${firstName}. Se tromper est la meilleure façon d'apprendre ! On va regarder ensemble où ça coince pour que ça devienne limpide.`;
       } else if (lowerContent.includes('quiz') || lowerContent.includes('pratiquer') || lowerContent.includes('exercice')) {
-        tutorReply = `Super initiative ${firstName} ! 🎯 Pour les exercices pratiques, rends-toi dans la section **Exercices** de l'application. Pour les quiz, direction la section **Quiz** ! Ici, dans le Tuteur IA, je suis là pour t'expliquer les notions et répondre à tes questions de compréhension en ${subject}. Que souhaites-tu que je t'explique ?`;
+        tutorReply = `Super idée ${firstName} ! 🎯 Pour t'amuser et t'entraîner, file dans la section **Exercices** ou **Quiz**. Ici, je suis là pour t'expliquer calmement tout ce qui te pose problème en ${subject}. Que veux-tu qu'on revoie ensemble ?`;
       } else if (lowerContent.includes('résum')) {
-        tutorReply = `Voici le résumé des points fondamentaux en ${subject} :\n\n1. **Concept clé :** Bien assimiler les définitions de base.\n2. **Méthode :** Suivre une démarche rigoureuse étape par étape.\n3. **Astuce :** Vérifier systématiquement la cohérence de tes résultats.\n\nQuel aspect souhaites-tu approfondir ensemble ?`;
+        tutorReply = `Voici la règle d'or à retenir en ${subject}, ${firstName} :\n\n⭐ **1. L'idée clé :** Reste calme et lis bien la consigne.\n⭐ **2. La méthode :** Fais les étapes une par une sans te presser.\n⭐ **3. Le conseil :** Si tu as un doute, demande-moi !\n\nVeux-tu qu'on illustre cela avec un exemple amusant ?`;
       } else if (lowerContent.includes('avance bien') || lowerContent.includes('progression') || lowerContent.includes('bilan')) {
-        tutorReply = `Tu es sur une excellente trajectoire, ${firstName} ! 📈 Ta progression est régulière. Continue à consolider les concepts ici avant de t'entraîner dans la section **Exercices**. Pour voir tes statistiques complètes, visite la section **Progression** du menu !`;
+        tutorReply = `Tu fais de super efforts, ${firstName} ! 🌟 Chaque fois que tu poses une question, tu progresses. Continue comme ça, prends ton temps, et n'oublie pas de fêter tes petites victoires dans l'onglet **Progression** !`;
       } else {
-        tutorReply = `J'ai bien noté ta question sur ${subject}. Analysons ce point ensemble étape par étape pour consolider ta compréhension.`;
+        tutorReply = `C'est une excellente question sur ${subject}, ${firstName} ! Prenons le temps d'y répondre ensemble pas à pas pour que ce soit facile à comprendre.`;
       }
     }
 

@@ -50,10 +50,15 @@ interface QuickAction {
             <div class="chat-avatar" *ngIf="m.author === 'tutor'">
               <mat-icon>smart_toy</mat-icon>
             </div>
-            <div class="chat-bubble">
+            <div class="chat-bubble" [class.is-arabic-msg]="isArabicText(m.text)">
               <!-- Regular text message -->
               <ng-container *ngIf="m.author === 'student' || !getParsed(m.text).isQuiz">
-                <div class="bubble-content" [innerHTML]="formatText(m.text)"></div>
+                <div
+                  class="bubble-content"
+                  [class.arabic-font]="isArabicText(m.text)"
+                  [attr.dir]="isArabicText(m.text) ? 'rtl' : 'ltr'"
+                  [innerHTML]="formatText(m.text)"
+                ></div>
               </ng-container>
 
               <!-- Interactive Quiz message -->
@@ -154,11 +159,12 @@ interface QuickAction {
             </div>
           </div>
 
-          <div class="quick-chips">
+          <div class="quick-chips" [attr.dir]="isArabic ? 'rtl' : 'ltr'">
             <button
-              *ngFor="let qa of quickActions"
+              *ngFor="let qa of currentQuickActions"
               type="button"
               class="chip chip--sm"
+              [class.arabic-font]="isArabic"
               (click)="sendQuickPrompt(qa.prompt)"
             >
               {{ qa.label }}
@@ -168,7 +174,9 @@ interface QuickAction {
           <div class="input-row">
             <textarea
               [(ngModel)]="userInput"
-              [placeholder]="currentQuestion ? 'Ou écris ta réponse personnalisée ici...' : 'Pose ta question à ton tuteur IA (Ollama)...'"
+              [placeholder]="isArabic ? (currentQuestion ? 'أَوْ اكْتُبْ إِجَابَتَكَ هُنَا...' : 'اطْرَحْ سُؤَالَكَ بِاللُّغَةِ العَرَبِيَّةِ عَلَى المُرَبِّي الذَّكِيِّ...') : (currentQuestion ? 'Ou écris ta réponse personnalisée ici...' : 'Pose ta question à ton tuteur IA (Ollama)...')"
+              [attr.dir]="isArabic ? 'rtl' : 'ltr'"
+              [class.arabic-font]="isArabic"
               rows="2"
               (keydown.enter)="onEnter($event)"
               [disabled]="isTyping"
@@ -687,6 +695,14 @@ interface QuickAction {
       border-radius: var(--radius-sm, 10px);
       flex-shrink: 0;
     }
+
+    .arabic-font {
+      font-family: 'Amiri', 'Cairo', 'Segoe UI', Tahoma, sans-serif !important;
+      direction: rtl;
+      text-align: right;
+      font-size: 1.05rem;
+      line-height: 1.85;
+    }
   `]
 })
 export class AiChatComponent implements OnInit, OnDestroy {
@@ -699,6 +715,7 @@ export class AiChatComponent implements OnInit, OnDestroy {
   ollamaStatus: { available: boolean; model: string; installedModels?: string[] } | null = null;
   activeQuizQuestions: QuizQuestion[] = [];
   selectedQuestionIndex = 0;
+  currentSubject = '';
 
   quickActions: QuickAction[] = [
     { label: '💡 Expliquer simplement', prompt: 'Explique-moi les concepts clés avec un exemple simple.' },
@@ -707,8 +724,16 @@ export class AiChatComponent implements OnInit, OnDestroy {
     { label: '📝 Méthode pas à pas', prompt: 'Comment résoudre ce type d\'exercice étape par étape ?' }
   ];
 
+  arabicQuickActions: QuickAction[] = [
+    { label: '💡 شرح مبسط', prompt: 'اشْرَحْ لِي هَذَا المَفْهُومَ بِمِثَالٍ سَهْلٍ وَمُبَسَّطٍ.' },
+    { label: '📘 مثال تطبيقي', prompt: 'أَعْطِنِي مِثَالاً تَطْبِيقِيّاً وَاضِحاً مِنْ صُلْبِ هَذَا الدَّرْسِ.' },
+    { label: '❓ اطرح علي سؤالاً', prompt: 'اطْرَحْ عَلَيَّ سُؤَالاً لِتَخْتَبِرَ مَدَى اسْتِيعَابِي لِلدَّرْسِ.' },
+    { label: '📝 منهجية خطوة بخطوة', prompt: 'كَيْفَ أُجِيبُ عَنْ هَذَا النَّوْعِ مِنَ الأَسْئِلَةِ خُطْوَةً بِخُطْوَةٍ ؟' }
+  ];
+
   private parsedCache = new Map<string, ParsedTutorContent>();
   private sub?: Subscription;
+  private sessionSub?: Subscription;
 
   constructor(
     private session: MockSessionService,
@@ -717,6 +742,10 @@ export class AiChatComponent implements OnInit, OnDestroy {
   ) {}
 
   async ngOnInit(): Promise<void> {
+    this.sessionSub = this.session.session$.subscribe(s => {
+      this.currentSubject = s?.subject || '';
+    });
+
     try {
       this.ollamaStatus = await firstValueFrom(this.http.get<any>('/api/conversations/ollama/status'));
     } catch (e) {
@@ -744,6 +773,20 @@ export class AiChatComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
+    this.sessionSub?.unsubscribe();
+  }
+
+  isArabicText(text?: string): boolean {
+    if (!text) return false;
+    return /[\u0600-\u06FF]/.test(text);
+  }
+
+  get isArabic(): boolean {
+    return this.session.isArabicSubject(this.currentSubject);
+  }
+
+  get currentQuickActions(): QuickAction[] {
+    return this.isArabic ? this.arabicQuickActions : this.quickActions;
   }
 
   get currentQuestion(): QuizQuestion | null {

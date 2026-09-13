@@ -1,13 +1,19 @@
 const http = require('http');
 const { checkOllamaStatus } = require('./ollama.service');
+const { 
+  BLUEPRINTS_BY_SUBJECT, 
+  detectEducationTier, 
+  getBlueprintsForLevelAndSubject, 
+  generateTopicTargets 
+} = require('./ai-quiz-blueprints');
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || '127.0.0.1';
 const OLLAMA_PORT = parseInt(process.env.OLLAMA_PORT || '11434', 10);
 
 /**
- * Calls Ollama API with format: "json" and a specified timeout.
+ * Calls Ollama API with format: "json" and a specified timeout (default 65s).
  */
-async function queryOllamaJson(messages, timeoutMs = 35000) {
+async function queryOllamaJson(messages, timeoutMs = 65000, modelOptions = {}) {
   const status = await checkOllamaStatus();
   if (!status.available || !status.hasModels) {
     throw new Error('Ollama non disponible');
@@ -22,8 +28,8 @@ async function queryOllamaJson(messages, timeoutMs = 35000) {
       format: 'json',
       stream: false,
       options: {
-        temperature: 0.7,
-        top_p: 0.9
+        temperature: modelOptions.temperature !== undefined ? modelOptions.temperature : 0.3,
+        top_p: modelOptions.top_p !== undefined ? modelOptions.top_p : 0.85
       }
     });
 
@@ -1810,23 +1816,293 @@ function randomizeQuestionOptions(q) {
  */
 function normalizeSubject(subject = '') {
   const s = subject.toLowerCase().trim();
-  if (s.includes('arab') || s.includes('islam')) return 'arabe';
-  if (s.includes('gest') || s.includes('compt') || s.includes('financ') || s.includes('manag') || s.includes('market') || s.includes('éco') || s.includes('eco')) return 'gestion';
-  if (s.includes('droit') || s.includes('jurid')) return 'droit';
-  if (s.includes('hist') || s.includes('géo') || s.includes('geo')) return 'histoire_geo';
-  if (s.includes('franc') || s.includes('franç') || s.includes('litt')) return 'francais';
+  if (s.includes('islam') || s.includes('din') || s.includes('coran') || s.includes('hadith')) return 'education_islamique';
+  if (s.includes('arab')) return 'arabe';
+  if (s.includes('physiq') || s.includes('chimi') || s.includes('pc')) return 'physique_chimie';
   if (s.includes('bio') || s.includes('svt') || s.includes('sant') || s.includes('anat') || s.includes('physio') || s.includes('éveil') || s.includes('eveil')) return 'biologie';
   if (s.includes('info') || s.includes('algo') || s.includes('code') || s.includes('program') || s.includes('ia') || s.includes('intelligence')) return 'informatique';
   if (s.includes('anglais') || s.includes('eng')) return 'anglais';
-  if (s.includes('math') || s.includes('stat')) return 'math';
-  return 'gestion';
+  if (s.includes('math') || s.includes('stat') || s.includes('arithm') || s.includes('géom') || s.includes('geom')) return 'math';
+  if (s.includes('hist') || s.includes('géo') || s.includes('geo')) return 'histoire_geo';
+  if (s.includes('sport') || s.includes('eps') || s.includes('physique et sportive')) return 'eps';
+  if (s.includes('méthod') || s.includes('method') || s.includes('philo')) return 'methodologie';
+  if (s.includes('gest') || s.includes('compt') || s.includes('financ') || s.includes('manag') || s.includes('market') || s.includes('éco') || s.includes('eco')) return 'gestion';
+  if (s.includes('droit') || s.includes('jurid')) return 'droit';
+  if (s.includes('franc') || s.includes('franç') || s.includes('litt')) return 'francais';
+  return 'francais';
 }
+
+const QUIZ_BANKS_CP = {
+  'math': [
+    {
+      topic: 'Dénombrement 1 à 5',
+      question: 'Combien y a-t-il d\'étoiles : ⭐ ⭐ ⭐ ?',
+      options: ['3 étoiles', '2 étoiles', '4 étoiles', '5 étoiles'],
+      correctIndex: 0,
+      explanation: 'Quand on compte une à une, il y a exactement 3 étoiles.'
+    },
+    {
+      topic: 'Petite addition',
+      question: 'Combien font 2 + 1 ?',
+      options: ['3', '2', '4', '5'],
+      correctIndex: 0,
+      explanation: '2 + 1 est égal à 3.'
+    },
+    {
+      topic: 'Petite addition',
+      question: 'Combien font 3 + 2 ?',
+      options: ['5', '4', '6', '3'],
+      correctIndex: 0,
+      explanation: '3 + 2 est égal à 5.'
+    },
+    {
+      topic: 'Suite des nombres',
+      question: 'Quel nombre vient juste après 4 ?',
+      options: ['5', '3', '6', '2'],
+      correctIndex: 0,
+      explanation: 'On compte : 1, 2, 3, 4, et après vient le 5.'
+    },
+    {
+      topic: 'Suite des nombres',
+      question: 'Quel nombre vient juste avant 7 ?',
+      options: ['6', '8', '5', '9'],
+      correctIndex: 0,
+      explanation: 'Le nombre situé juste avant 7 est le 6.'
+    },
+    {
+      topic: 'Plus grand nombre',
+      question: 'Quel est le plus grand nombre entre 3 et 8 ?',
+      options: ['8', '3', '2', '5'],
+      correctIndex: 0,
+      explanation: '8 est plus grand que 3.'
+    },
+    {
+      topic: 'Formes simples',
+      question: 'Quelle est la forme d\'un ballon de football ?',
+      options: ['Un rond (cercle)', 'Un carré', 'Un triangle', 'Un rectangle'],
+      correctIndex: 0,
+      explanation: 'Le ballon est tout rond comme un cercle.'
+    },
+    {
+      topic: 'Formes simples',
+      question: 'Combien de côtés possède un triangle ?',
+      options: ['3 côtés', '4 côtés', '2 côtés', '5 côtés'],
+      correctIndex: 0,
+      explanation: 'Le triangle possède exactement 3 côtés.'
+    },
+    {
+      topic: 'Formes simples',
+      question: 'Combien de côtés possède un carré ?',
+      options: ['4 côtés', '3 côtés', '2 côtés', '5 côtés'],
+      correctIndex: 0,
+      explanation: 'Le carré possède 4 côtés égaux.'
+    },
+    {
+      topic: 'Repérage spatial',
+      question: 'Où pose-t-on le chapeau quand on s\'habille ?',
+      options: ['Sur la tête', 'Sous les pieds', 'Dans la poche', 'Sous la table'],
+      correctIndex: 0,
+      explanation: 'On met le chapeau sur la tête.'
+    }
+  ],
+  'francais': [
+    {
+      topic: 'Les voyelles',
+      question: 'Laquelle de ces lettres est une voyelle ?',
+      options: ['A', 'B', 'D', 'F'],
+      correctIndex: 0,
+      explanation: 'La lettre A est une voyelle.'
+    },
+    {
+      topic: 'Son initial',
+      question: 'Par quelle lettre commence le mot « Chat » ?',
+      options: ['C', 'P', 'M', 'T'],
+      correctIndex: 0,
+      explanation: 'Chat commence par la lettre C.'
+    },
+    {
+      topic: 'Son initial',
+      question: 'Par quelle lettre commence le mot « Pomme » ?',
+      options: ['P', 'V', 'L', 'S'],
+      correctIndex: 0,
+      explanation: 'Pomme commence par la lettre P.'
+    },
+    {
+      topic: 'Articles simples',
+      question: 'Que dit-on devant le mot « crayon » ?',
+      options: ['Un crayon', 'Une crayon', 'Des crayon', 'La crayon'],
+      correctIndex: 0,
+      explanation: 'On dit « un crayon ».'
+    },
+    {
+      topic: 'Articles simples',
+      question: 'Que dit-on devant le mot « gomme » ?',
+      options: ['Une gomme', 'Un gomme', 'Le gomme', 'Des gomme'],
+      correctIndex: 0,
+      explanation: 'On dit « une gomme ».'
+    },
+    {
+      topic: 'Vocabulaire école',
+      question: 'Avec quoi efface-t-on une erreur sur un cahier ?',
+      options: ['Une gomme', 'Une règle', 'Un cartable', 'Des ciseaux'],
+      correctIndex: 0,
+      explanation: 'On utilise une gomme pour effacer.'
+    },
+    {
+      topic: 'Politesse',
+      question: 'Que dit-on le matin quand on arrive dans la classe ?',
+      options: ['Bonjour', 'Bonne nuit', 'Au revoir', 'Pardon'],
+      correctIndex: 0,
+      explanation: 'Le matin, on dit gentiment Bonjour.'
+    },
+    {
+      topic: 'Couleurs simples',
+      question: 'Quelle est la couleur de l\'herbe fraîche ?',
+      options: ['Verte', 'Rouge', 'Bleue', 'Noire'],
+      correctIndex: 0,
+      explanation: 'L\'herbe est verte.'
+    }
+  ],
+  'arabe': [
+    {
+      topic: 'الحروف الهجائية',
+      question: 'أَيُّ حَرْفٍ تَبْدَأُ بِهِ كَلِمَةُ «بَاب» ؟',
+      options: ['حَرْفُ البَاءِ (ب)', 'حَرْفُ المِيمِ (م)', 'حَرْفُ الدَّالِ (د)', 'حَرْفُ الرَّاءِ (ر)'],
+      correctIndex: 0,
+      explanation: 'كلمة باب تبدأ بحرف الباء.'
+    },
+    {
+      topic: 'أسماء الإشارة',
+      question: 'مَاذَا نَقُولُ لِلْوَلَدِ ؟',
+      options: ['هَذَا وَلَدٌ', 'هَذِهِ وَلَدٌ', 'تِلْكَ وَلَدٌ', 'هُنَا وَلَدٌ'],
+      correctIndex: 0,
+      explanation: 'نستخدم «هذا» للمذكر فنقول : هذا ولد.'
+    },
+    {
+      topic: 'أسماء الإشارة',
+      question: 'مَاذَا نَقُولُ لِلْبِنْتِ ؟',
+      options: ['هَذِهِ بِنْتٌ', 'هَذَا بِنْتٌ', 'ذَلِكَ بِنْتٌ', 'هُنَا بِنْتٌ'],
+      correctIndex: 0,
+      explanation: 'نستخدم «هذه» للمؤنث فنقول : هذه بنت.'
+    },
+    {
+      topic: 'الأدوات المدرسية',
+      question: 'بِمَاذَا نَكْتُبُ الدَّرْسَ فِي الدَّفْتَرِ ؟',
+      options: ['بِالقَلَمِ', 'بِالمِمْحَاةِ', 'بِالمِسْطَرَةِ', 'بِالمِقَصِّ'],
+      correctIndex: 0,
+      explanation: 'نكتب بالقلم.'
+    },
+    {
+      topic: 'الحركات القصيرة',
+      question: 'الحَرَكَةُ فَوْقَ حَرْفِ الدَّالِ فِي كَلِمَةِ «دَار» هِيَ :',
+      options: ['الفَتْحَة', 'الضَّمَّة', 'الكَسْرَة', 'السُّكُون'],
+      correctIndex: 0,
+      explanation: 'الفتحة توضع فوق الحرف.'
+    }
+  ],
+  'education_islamique': [
+    {
+      topic: 'أركان الإسلام',
+      question: 'كَمْ عَدَدُ أَرْكَانِ الإِسْلَامِ ؟',
+      options: ['5 أَرْكَان', '3 أَرْكَان', '7 أَرْكَان', '10 أَرْكَان'],
+      correctIndex: 0,
+      explanation: 'أركان الإسلام خمسة.'
+    },
+    {
+      topic: 'الركن الأول',
+      question: 'مَا هُوَ الرُّكْنُ الأَوَّلُ مِنْ أَرْكَانِ الإِسْلَامِ ؟',
+      options: ['الشَّهَادَتَانِ', 'الصَّوْمُ', 'الحَجُّ', 'الزَّكَاةُ'],
+      correctIndex: 0,
+      explanation: 'أول أركان الإسلام هو الشهادتان.'
+    },
+    {
+      topic: 'آداب الأكل',
+      question: 'مَاذَا نَقُولُ قَبْلَ أَنْ نَبْدَأَ فِي الأَكْلِ ؟',
+      options: ['بِسْمِ اللَّهِ', 'الحَمْدُ لِلَّهِ', 'أَسْتَغْفِرُ اللَّه', 'سُبْحَانَ اللَّه'],
+      correctIndex: 0,
+      explanation: 'نقول باسم الله قبل تناول الطعام.'
+    },
+    {
+      topic: 'آداب الأكل',
+      question: 'بِأَيِّ يَدٍ نَأْكُلُ الطَّعَامَ كَمَا عَلَّمَنَا رَسُولُ اللَّهِ ؟',
+      options: ['بِاليَدِ اليُمْنَى', 'بِاليَدِ اليُسْرَى', 'بِاليَدَيْنِ مَعًا', 'لَا فَرْقَ'],
+      correctIndex: 0,
+      explanation: 'نأكل باليد اليمنى تيمناً وسنة.'
+    }
+  ],
+  'biologie': [
+    {
+      topic: 'Les 5 sens',
+      question: 'Avec quel organe pouvons-nous voir les couleurs et les formes ?',
+      options: ['Les yeux', 'Les oreilles', 'Le nez', 'La bouche'],
+      correctIndex: 0,
+      explanation: 'Les yeux nous permettent de voir.'
+    },
+    {
+      topic: 'Les 5 sens',
+      question: 'Avec quel organe pouvons-nous écouter une jolie musique ?',
+      options: ['Les oreilles', 'Les yeux', 'Les mains', 'La langue'],
+      correctIndex: 0,
+      explanation: 'Les oreilles nous permettent d\'entendre.'
+    },
+    {
+      topic: 'L\'hygiène',
+      question: 'Avec quoi se lave-t-on les mains avant de manger ?',
+      options: ['Avec de l\'eau et du savon', 'Avec du sable', 'Avec un mouchoir sec', 'Avec du jus'],
+      correctIndex: 0,
+      explanation: 'On utilise de l\'eau propre et du savon.'
+    },
+    {
+      topic: 'Le jour et la nuit',
+      question: 'Quand voit-on le soleil briller dans le ciel ?',
+      options: ['Pendant le jour', 'Pendant la nuit', 'Pendant la pluie', 'Sous l\'eau'],
+      correctIndex: 0,
+      explanation: 'Le soleil éclaire la Terre pendant la journée.'
+    }
+  ],
+  'anglais': [
+    {
+      topic: 'Colors',
+      question: 'What color is the sun in the sky?',
+      options: ['Yellow', 'Blue', 'Black', 'Purple'],
+      correctIndex: 0,
+      explanation: 'The sun is yellow.'
+    },
+    {
+      topic: 'Numbers',
+      question: 'How many fingers do you have on one hand?',
+      options: ['5', '2', '8', '10'],
+      correctIndex: 0,
+      explanation: 'We have 5 fingers on one hand.'
+    },
+    {
+      topic: 'Animals',
+      question: 'Which animal says "meow"?',
+      options: ['The cat', 'The dog', 'The cow', 'The duck'],
+      correctIndex: 0,
+      explanation: 'The cat says meow.'
+    }
+  ]
+};
 
 /**
  * Returns question pool from internal bank for a given subject and difficulty tier.
  */
-function getQuestionsFromBank(subjectKey, difficulty = 'Débutant') {
-  const subjBank = QUIZ_BANKS_BY_SUBJECT[subjectKey] || QUIZ_BANKS_BY_SUBJECT['gestion'];
+function getQuestionsFromBank(subjectKey, difficulty = 'Débutant', isPrimaire1 = false) {
+  if (isPrimaire1) {
+    const cpBank = QUIZ_BANKS_CP[subjectKey] ||
+                   (subjectKey === 'education_islamique' ? QUIZ_BANKS_CP['arabe'] : null) ||
+                   QUIZ_BANKS_CP['math'];
+    if (cpBank && cpBank.length > 0) {
+      return cpBank;
+    }
+  }
+
+  const subjBank = QUIZ_BANKS_BY_SUBJECT[subjectKey] ||
+                   (subjectKey === 'education_islamique' ? QUIZ_BANKS_BY_SUBJECT['arabe'] : null) ||
+                   (subjectKey === 'physique_chimie' ? QUIZ_BANKS_BY_SUBJECT['math'] : null) ||
+                   QUIZ_BANKS_BY_SUBJECT['francais'] ||
+                   QUIZ_BANKS_BY_SUBJECT['gestion'];
   const diffTier = ['Débutant', 'Intermédiaire', 'Avancé'].includes(difficulty) ? difficulty : 'Débutant';
   
   if (subjBank[diffTier] && subjBank[diffTier].length > 0) {
@@ -1836,12 +2112,335 @@ function getQuestionsFromBank(subjectKey, difficulty = 'Débutant') {
 }
 
 /**
- * Cleans options and ensures NO dummy placeholders ('Choix 1', empty, etc.) ever reach the student.
- * If question or options are invalid, smoothly substitutes with a verified question from the bank.
+ * Normalizes text for similarity and anti-repetition comparison.
  */
-function sanitizeQuestionOptions(q, defaultTopic, subjectKey, targetDifficulty) {
+function normalizeForSimilarity(str = '') {
+  return String(str || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s\u0600-\u06FF]/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Calculates token overlap similarity between two question texts.
+ */
+function calculateQuestionSimilarity(q1 = '', q2 = '') {
+  const norm1 = normalizeForSimilarity(q1);
+  const norm2 = normalizeForSimilarity(q2);
+  if (!norm1 || !norm2) return 0;
+  if (norm1 === norm2) return 1.0;
+  if (norm1.includes(norm2) || norm2.includes(norm1)) {
+    if (Math.min(norm1.length, norm2.length) > 20) return 0.85;
+  }
+  const words1 = new Set(norm1.split(' ').filter(w => w.length > 3));
+  const words2 = new Set(norm2.split(' ').filter(w => w.length > 3));
+  if (words1.size === 0 || words2.size === 0) return 0;
+  let intersection = 0;
+  for (let w of words1) {
+    if (words2.has(w)) intersection++;
+  }
+  const union = new Set([...words1, ...words2]).size;
+  return union > 0 ? intersection / union : 0;
+}
+
+/**
+ * Checks if candidate question is a duplicate of any already accepted question or avoided question.
+ */
+function isQuestionDuplicate(candidateText, acceptedQuestions = [], avoidList = [], threshold = 0.58) {
+  if (!candidateText || candidateText.trim().length < 8) return true;
+  const candNorm = normalizeForSimilarity(candidateText);
+  for (const item of acceptedQuestions) {
+    const itemText = typeof item === 'string' ? item : item.question;
+    if (calculateQuestionSimilarity(candNorm, itemText) >= threshold) return true;
+  }
+  for (const avoided of avoidList) {
+    if (calculateQuestionSimilarity(candNorm, avoided) >= threshold) return true;
+  }
+  return false;
+}
+
+/**
+ * Ensures correctIndex strictly corresponds to the answer explained in explanation.
+ */
+function alignCorrectIndexWithExplanation(options, correctIndex, explanation, questionText = '') {
+  if (!explanation || !Array.isArray(options) || options.length === 0) {
+    return (correctIndex >= 0 && correctIndex < options.length) ? correctIndex : 0;
+  }
+  const normExp = normalizeForSimilarity(explanation);
+  const normQ = normalizeForSimilarity(questionText);
+  let bestIdx = (correctIndex >= 0 && correctIndex < options.length) ? correctIndex : 0;
+  let highestScore = -999;
+
+  options.forEach((opt, idx) => {
+    const optNorm = normalizeForSimilarity(opt);
+    if (optNorm.length < 2) return;
+
+    let score = 0;
+    
+    // Explicit answer patterns in explanation
+    const explicitPatterns = [
+      `bonne reponse est ${optNorm}`,
+      `reponse est ${optNorm}`,
+      `reponse exacte est ${optNorm}`,
+      `reponse correcte est ${optNorm}`,
+      `est « ${optNorm} »`,
+      `est "${optNorm}"`,
+      `est '${optNorm}'`,
+      `est ${optNorm}`,
+      `c est ${optNorm}`,
+      `c'est ${optNorm}`,
+      `donc ${optNorm}`,
+      `egal a ${optNorm}`,
+      `il s agit de ${optNorm}`,
+      `il s agit du ${optNorm}`,
+      `il s agit d une ${optNorm}`,
+      `il s agit d un ${optNorm}`
+    ];
+
+    let hasExplicitMarker = false;
+    for (const pat of explicitPatterns) {
+      if (normExp.includes(pat)) {
+        score += 300;
+        hasExplicitMarker = true;
+        break;
+      }
+    }
+
+    if (normExp.includes(optNorm)) {
+      score += optNorm.length * 4;
+      const pos = normExp.indexOf(optNorm);
+      score += Math.min(40, pos);
+    }
+
+    // Penalize if this option text is just an exact verbatim substring from the question prompt
+    // and DOES NOT have an explicit answer marker in explanation
+    // (e.g. question asks for antonyme of "heureux", so "heureux" is in the prompt and quoted in explanation!)
+    if (normQ && normQ.includes(optNorm) && !hasExplicitMarker) {
+      score -= 120;
+    }
+
+    // Give slight bias to the original index chosen by the model if plausible
+    if (idx === correctIndex && score > 0) {
+      score += 25;
+    }
+
+    if (score > highestScore) {
+      highestScore = score;
+      bestIdx = idx;
+    }
+  });
+
+  return bestIdx;
+}
+
+/**
+ * Contextual distractors to pad 2-3 valid AI options to 4 instead of dropping valid AI questions.
+ */
+function getSubjectPaddedDistractors(subjectKey, isArabic, isEnglish, isPrimaire1 = false) {
+  if (isPrimaire1) {
+    if (isArabic) {
+      return ['خِيَارٌ آخَر', 'إِجَابَةٌ أُخْرَى', 'لَا شَيْء مِمَّا سَبَق', 'خِيَارٌ ثَالِث'];
+    }
+    if (isEnglish) {
+      return ['Other', 'None', 'Something else', 'Not this'];
+    }
+    if (subjectKey === 'math') {
+      return ['1', '6', '7', '0'];
+    }
+    return ['Autre', 'Rien', 'Un autre mot', 'Aucun'];
+  }
+  if (isArabic) {
+    return ['جميع ما سبق غير صحيح', 'لا توجد إجابة صحيحة مما ذُكر', 'حالة استثنائية أخرى', 'لا شيء مما سبق'];
+  }
+  if (isEnglish) {
+    return ['None of the above choices', 'All of the choices are correct', 'This form does not change', 'Not applicable in this sentence'];
+  }
+  if (subjectKey === 'math' || subjectKey === 'physique_chimie') {
+    return ['Aucune des valeurs proposées', 'Données insuffisantes pour répondre', 'Le résultat est indéterminé', 'Valeur indéterminée'];
+  }
+  return ['Tous les choix ci-dessus sont corrects', 'Aucun de ces termes ne convient', 'Cette forme est invariable', 'Autre règle grammaticale'];
+}
+
+function cleanCongratulatoryPrefix(text) {
+  if (!text) return '';
+  return String(text)
+    .replace(/^(bravo|félicitations|felicitations|bien joué|super|excellent|très bien|tres bien|well done|great job)\s*[!.:,-]*\s*/i, '')
+    .replace(/^(أحسنت|ممتاز|بارك الله فيك|رائع|عمل رائع)\s*[!.:,-،]*\s*/u, '')
+    .trim();
+}
+
+/**
+ * Semantic consistency gate: detects logical contradictions between the question
+ * text and the option marked as correct by Ollama.
+ *
+ * Returns:
+ *  - the corrected correctIndex if we can auto-fix it
+ *  - the original correctIndex if no issue detected
+ *  - null  if the question is fundamentally broken and must be discarded
+ */
+function sanitizedSemanticCheck(questionText, options, correctIndex, isPrimaire1 = false) {
+  if (!questionText || !Array.isArray(options) || options.length === 0) return correctIndex;
+
+  const qLow = questionText.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  // ── RULE 1: "commence par la lettre X" / "begin with letter X" ──────────────
+  // The correct answer MUST start with that letter (case-insensitive, ignore accents)
+  const letterMatch =
+    qLow.match(/commence par la lettre\s+[«"']?([a-z])[»"']?/i) ||
+    qLow.match(/commence par\s+[«"']?([a-z])[»"']?/i) ||
+    qLow.match(/begin(?:ning)? with(?: the)?(?: letter)?\s+[«"']?([a-z])[»"']?/i) ||
+    qLow.match(/starts? with(?: the)?(?: letter)?\s+[«"']?([a-z])[»"']?/i);
+
+  if (letterMatch) {
+    const targetLetter = letterMatch[1].toUpperCase();
+    const normalize = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
+    // Find the option(s) that genuinely start with targetLetter
+    const validIndices = options
+      .map((opt, i) => ({ opt: normalize(opt), i }))
+      .filter(({ opt }) => opt.toUpperCase().startsWith(targetLetter));
+
+    if (validIndices.length === 0) {
+      // No option starts with the target letter → question is garbage, discard
+      console.warn(`[SemanticCheck] Discarding: no option starts with '${targetLetter}' — Q: ${questionText}`);
+      return null;
+    }
+
+    const currentOpt = normalize(options[correctIndex] || '');
+    if (!currentOpt.toUpperCase().startsWith(targetLetter)) {
+      // Current correctIndex is wrong → auto-fix to first matching option
+      const fixedIdx = validIndices[0].i;
+      console.warn(`[SemanticCheck] Auto-corrected correctIndex ${correctIndex}→${fixedIdx}: '${options[correctIndex]}' doesn't start with '${targetLetter}' — Q: ${questionText}`);
+      return fixedIdx;
+    }
+    return correctIndex;
+  }
+
+  // ── RULE 2: "est une voyelle" / "is a vowel" ────────────────────────────────
+  // The correct answer must be a known vowel letter (A E I O U Y)
+  const vowelQ =
+    qLow.includes('voyelle') ||
+    qLow.includes('vowel');
+
+  if (vowelQ && isPrimaire1) {
+    const VOWELS = new Set(['A', 'E', 'I', 'O', 'U', 'Y']);
+    const normalize = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+    const currentOpt = normalize(options[correctIndex] || '');
+
+    if (currentOpt.length <= 2 && !VOWELS.has(currentOpt)) {
+      // Marked answer is NOT a vowel → look for one in options
+      const fixIdx = options.findIndex(opt => VOWELS.has(normalize(opt)));
+      if (fixIdx >= 0) {
+        console.warn(`[SemanticCheck] Auto-corrected vowel answer: '${options[correctIndex]}' → '${options[fixIdx]}'`);
+        return fixIdx;
+      }
+      // No vowel found among options → discard
+      console.warn(`[SemanticCheck] Discarding vowel question — no valid vowel among options`);
+      return null;
+    }
+    return correctIndex;
+  }
+
+  // ── RULE 3: "combien font A + B" or "combien font A - B" ────────────────────
+  // For simple arithmetic CP questions, verify the numeric answer matches
+  const arithMatch =
+    qLow.match(/combien font\s+(\d+)\s*\+\s*(\d+)/) ||
+    qLow.match(/combien font\s+(\d+)\s*-\s*(\d+)/);
+
+  if (arithMatch && isPrimaire1) {
+    const [, aStr, bStr] = arithMatch;
+    const a = parseInt(aStr, 10);
+    const b = parseInt(bStr, 10);
+    const isSubtraction = qLow.includes('-');
+    const expected = isSubtraction ? a - b : a + b;
+
+    const normalize = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    const currentOpt = normalize(options[correctIndex] || '');
+
+    if (parseInt(currentOpt, 10) !== expected) {
+      // Marked answer is arithmetically wrong → auto-fix
+      const fixIdx = options.findIndex(opt => parseInt(normalize(opt), 10) === expected);
+      if (fixIdx >= 0) {
+        console.warn(`[SemanticCheck] Auto-corrected arithmetic: ${a}${isSubtraction?'-':'+'}${b}=${expected}, was '${options[correctIndex]}'`);
+        return fixIdx;
+      }
+      console.warn(`[SemanticCheck] Discarding arithmetic question — correct value ${expected} not among options`);
+      return null;
+    }
+    return correctIndex;
+  }
+
+  // ── RULE 4: "nombre de syllabes" ────────────────────────────────────────────
+  // Matches any phrasing that includes a hyphenated syllabified word:
+  //   "Combien de syllabes a le mot 'ba-na-ne' ?"
+  //   "Combien de syllabes entend-on dans « ba-na-ne » ?"
+  // Strategy: prefer the hyphenated word inside quotes or after "mot", else the
+  // last hyphenated token in the question. Skip liaison words (entend-on, dit-il…).
+  const LIAISON_WORDS = new Set([
+    'entend-on', 'dit-il', 'dit-elle', 'a-t-il', 'a-t-elle', 'est-ce',
+    'n-est', 'n-y', 'peut-on', 'doit-on', 'va-t-il', 'va-t-elle',
+    'sont-ils', 'sont-elles', 'trouve-t-on', 'voit-on', 'lit-on'
+  ]);
+  const syllabeQ = qLow.includes('syllabe');
+  if (syllabeQ) {
+    // Priority 1: word inside quotes (« », " ", ' ')
+    let hyphenWord = null;
+    const quotedMatch = questionText.match(/[«"'`\u2018\u2019\u201C\u201D]([\wÀ-ÿ]+-[\wÀ-ÿ]+(?:-[\wÀ-ÿ]+)*)[»"'`\u2018\u2019\u201C\u201D]/);
+    if (quotedMatch) {
+      hyphenWord = quotedMatch[1];
+    }
+
+    // Priority 2: word after "mot" keyword
+    if (!hyphenWord) {
+      const motMatch = questionText.match(/\b(?:le mot|du mot|au mot|mot)\s+[«"'`]?([\wÀ-ÿ]+-[\wÀ-ÿ]+(?:-[\wÀ-ÿ]+)*)/i);
+      if (motMatch) hyphenWord = motMatch[1];
+    }
+
+    // Priority 3: all hyphenated tokens, skip known liaison words, take the last one
+    if (!hyphenWord) {
+      const allHyphens = [...questionText.matchAll(/\b([\wÀ-ÿ]+-[\wÀ-ÿ]+(?:-[\wÀ-ÿ]+)*)\b/g)];
+      for (let m of allHyphens.reverse()) {
+        if (!LIAISON_WORDS.has(m[1].toLowerCase())) {
+          hyphenWord = m[1];
+          break;
+        }
+      }
+    }
+
+    if (hyphenWord) {
+      const expectedCount = (hyphenWord.match(/-/g) || []).length + 1;
+      const normalize = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+      const currentOpt = normalize(options[correctIndex] || '');
+      const currentNum = parseInt(currentOpt, 10);
+
+      if (!isNaN(currentNum) && currentNum !== expectedCount) {
+        const fixIdx = options.findIndex(opt => parseInt(normalize(opt), 10) === expectedCount);
+        if (fixIdx >= 0) {
+          console.warn(`[SemanticCheck] Auto-corrected syllabe count in '${hyphenWord}': expected ${expectedCount}, was '${options[correctIndex]}'`);
+          return fixIdx;
+        }
+        console.warn(`[SemanticCheck] Discarding syllabe question — correct count ${expectedCount} not among options (word: '${hyphenWord}')`);
+        return null;
+      }
+    }
+    return correctIndex;
+  }
+
+  // No semantic rule triggered → accept as-is
+  return correctIndex;
+}
+
+/**
+ * Cleans options and ensures NO dummy placeholders ('Choix 1', empty, etc.) reach the student.
+ * If 2 or 3 valid options are generated by Ollama, pads them to 4 to preserve the AI question.
+ * Returns null if the AI candidate question is structurally unusable.
+ */
+function sanitizeQuestionOptions(q, defaultTopic, subjectKey, targetDifficulty, isPrimaire1 = false) {
   let questionText = (q && q.question ? String(q.question) : '').trim();
-  let explanationText = (q && q.explanation ? String(q.explanation) : '').trim();
+  let explanationText = cleanCongratulatoryPrefix(q && q.explanation ? String(q.explanation) : '');
   let topicText = (q && q.topic ? String(q.topic) : defaultTopic).trim();
 
   let raw = q ? q.options : null;
@@ -1873,7 +2472,8 @@ function sanitizeQuestionOptions(q, defaultTopic, subjectKey, targetDifficulty) 
          .replace(/^option\s*[a-d\d]+\s*[:.)\-]?\s*/i, '')
          .trim();
 
-    if (!s || s.length < 2) continue;
+    // Preserve single digits (e.g. '3', '5') and letters (e.g. 'A') for CP math and reading
+    if (!s || s.length < 1) continue;
     if (/^(choix|option|reponse|réponse)\s*[a-d\d]?$/i.test(s)) continue;
 
     if (!cleanedOpts.includes(s)) {
@@ -1881,22 +2481,39 @@ function sanitizeQuestionOptions(q, defaultTopic, subjectKey, targetDifficulty) 
     }
   }
 
-  if (!questionText || questionText.length < 8 || cleanedOpts.length < 4) {
-    const fallbackBank = getQuestionsFromBank(subjectKey, targetDifficulty);
-    const pick = fallbackBank[Math.floor(Math.random() * fallbackBank.length)];
-    return randomizeQuestionOptions({
-      question: pick.question,
-      options: [...pick.options],
-      correctIndex: pick.correctIndex,
-      explanation: pick.explanation,
-      topic: pick.topic || defaultTopic
-    });
+  const isArabic = subjectKey === 'arabe' || subjectKey === 'education_islamique' || /[\u0600-\u06FF]/.test(questionText);
+  const isEnglish = subjectKey === 'anglais';
+
+  // If Ollama produced 2 or 3 distinct options, pad to 4 rather than dropping the AI question
+  if (cleanedOpts.length >= 2 && cleanedOpts.length < 4) {
+    const distractors = getSubjectPaddedDistractors(subjectKey, isArabic, isEnglish, isPrimaire1);
+    for (const d of distractors) {
+      if (cleanedOpts.length >= 4) break;
+      if (!cleanedOpts.includes(d)) cleanedOpts.push(d);
+    }
+  }
+
+  const minQLen = isPrimaire1 ? 5 : 8;
+  if (!questionText || questionText.length < minQLen || cleanedOpts.length < 4) {
+    return null;
   }
 
   let cIdx = 0;
   if (typeof q.correctIndex === 'number' && q.correctIndex >= 0 && q.correctIndex < cleanedOpts.length) {
     cIdx = q.correctIndex;
   }
+  cIdx = alignCorrectIndexWithExplanation(cleanedOpts, cIdx, explanationText, questionText);
+
+  // ── Semantic consistency check ──────────────────────────────────────────────
+  // Detect common Ollama hallucination: "Quel mot commence par X?" but correct
+  // answer does not start with X, or "Quelle voyelle?" but answer is a consonant.
+  const sanitizedCorrect = sanitizedSemanticCheck(questionText, cleanedOpts, cIdx, isPrimaire1);
+  if (sanitizedCorrect === null) {
+    // Question is semantically broken and cannot be auto-corrected → discard it
+    return null;
+  }
+  cIdx = sanitizedCorrect;
+  // ─────────────────────────────────────────────────────────────────────────────
 
   return randomizeQuestionOptions({
     question: questionText,
@@ -1915,7 +2532,7 @@ function sanitizeQuestionOptions(q, defaultTopic, subjectKey, targetDifficulty) 
  * Generates subject-specific procedural questions (computations, principles, definitions)
  * ensuring 100% mathematical guarantee of reaching requested count without repetition.
  */
-function generateProceduralQuizQuestions(subjectKey, targetDifficulty, neededCount, existingQuestions = []) {
+function generateProceduralQuizQuestions(subjectKey, targetDifficulty, neededCount, existingQuestions = [], isPrimaire1 = false) {
   const generated = [];
   const existingTexts = existingQuestions.map(q => (q.question || '').toLowerCase().slice(0, 30));
 
@@ -1928,6 +2545,26 @@ function generateProceduralQuizQuestions(subjectKey, targetDifficulty, neededCou
     }
     return false;
   };
+
+  if (isPrimaire1) {
+    const pairs = [
+      [1, 1], [2, 1], [1, 2], [2, 2], [3, 1], [1, 3],
+      [3, 2], [2, 3], [4, 1], [1, 4], [3, 3], [4, 2],
+      [5, 1], [2, 4], [5, 2], [3, 4], [4, 3], [6, 1]
+    ];
+    for (let [a, b] of pairs) {
+      if (generated.length >= neededCount) break;
+      const sum = a + b;
+      addIfUnique({
+        topic: 'Petite addition (CP)',
+        question: `Combien font ${a} + ${b} ?`,
+        options: [`${sum}`, `${sum + 1}`, `${Math.max(1, sum - 1)}`, `${sum + 2}`],
+        correctIndex: 0,
+        explanation: `${a} + ${b} est égal à ${sum}.`
+      });
+    }
+    return generated;
+  }
 
   if (subjectKey === 'gestion') {
     // 1. Calcul de TVA
@@ -2071,17 +2708,31 @@ function generateProceduralQuizQuestions(subjectKey, targetDifficulty, neededCou
  * Generates dynamic QCM questions for a student using Ollama, with smart batching up to 10-15 questions.
  */
 async function generateAiQuiz({ subject, topic, level, difficulty = 'Débutant', count = 10, avoidQuestions = [] }, studentContext = {}) {
-  const targetSubject = subject || 'Général';
-  const targetLevel = level || studentContext?.student?.education_level || 'Lycée / Université';
-  const targetDifficulty = ['Débutant', 'Intermédiaire', 'Avancé'].includes(difficulty) ? difficulty : 'Débutant';
+  const targetSubject = subject || 'Français';
+  const targetLevel = level || studentContext?.student?.education_level || '1ère année primaire';
+  const tier = detectEducationTier(targetLevel);
+  const isPrimaire1 = tier === 'primaire_1';
+  const targetDifficulty = ['Débutant', 'Intermédiaire', 'Avancé'].includes(difficulty) ? difficulty : (isPrimaire1 ? 'Débutant' : 'Débutant');
   const studentName = studentContext?.student?.first_name || 'l\'élève';
   const subjectKey = normalizeSubject(targetSubject);
-  const avoidListStr = avoidQuestions.filter(Boolean).slice(-15).join(' | ');
+  const avoidList = (avoidQuestions || []).filter(Boolean);
 
   // Target count requested (5, 10, or 15 questions)
   const finalCount = Math.max(3, Math.min(15, count || 10));
-  // Request a balanced batch from Ollama (up to 8) to maintain fast generation
-  const aiPromptCount = Math.min(finalCount, 8);
+  // Request 1 extra question to guarantee reaching finalCount even if 1 is filtered
+  const countToPrompt = Math.min(15, finalCount + 1);
+
+  // Determine pedagogical blueprint targets to ensure diversity & zero repetitive phrasing
+  let targets = [];
+  if (topic && topic.trim().length > 3 && !topic.toLowerCase().includes('général') && !topic.toLowerCase().includes('notions clés')) {
+    targets = generateTopicTargets(topic.trim(), countToPrompt, subjectKey);
+  } else {
+    const bps = getBlueprintsForLevelAndSubject(targetLevel, subjectKey);
+    targets = bps.slice(0, countToPrompt);
+  }
+
+  const isArabic = subjectKey === 'arabe' || subjectKey === 'education_islamique';
+  const isEnglish = subjectKey === 'anglais';
 
   const diffGuidance = {
     'Débutant': `🎯 DIRECTIVE IMPÉRATIVE DE DIFFICULTÉ : [NIVEAU DÉBUTANT - SIMPLE, INTUITIF ET LOGIQUE]
@@ -2105,25 +2756,187 @@ async function generateAiQuiz({ subject, topic, level, difficulty = 'Débutant',
 - RÈGLE FONDAMENTALE : 4 propositions complètes et rédigées (INTERDICTION de "Choix 1", "Option A").`
   }[targetDifficulty];
 
-  const systemPrompt = `Tu es TutorAI, tuteur pédagogique personnel intelligent.
+  const formattedBlueprint = targets.map((t, idx) => `Point ${idx + 1} : ${t}`).join('\n');
+
+  let systemPrompt = '';
+  let userPrompt = '';
+
+  if (isArabic) {
+    if (isPrimaire1) {
+      systemPrompt = `أنت Tuteur IA، أستاذ بيداغوجي صبور ومحبب لتلاميذ السنة الأولى ابتدائي (عمر التلميذ: 6 سنوات).
+يجب عليك توليد اختبار أسئلة متعددة الاختيارات (QCM) مبسط جداً لـ ${studentName} في مادة ${targetSubject}.
+
+المواضيع والمفاهيم المستهدفة:
+${formattedBlueprint}
+
+قواعد بيداغوجية صارمة وخاصة بالسنة الأولى ابتدائي (1ère année primaire / CP) :
+1. السن والمستوى: تلميذ في سن 6 سنوات يتعلم مبادئ القراءة والكتابة والحساب الأولي.
+2. نص السؤال: جملة قصيرة جداً (3 إلى 6 كلمات فقط) ومشكولة تماماً بالحركات (الفتحة، الضمة، الكسرة، السكون). مثال: « مَا هُوَ الحَرْفُ الأَوَّلُ فِي كَلِمَةِ «دَار» ؟ » أو « نَقُولُ: (هَذَا وَلَدٌ) أَمْ (هَذِهِ وَلَدٌ) ؟ ».
+3. الخيارات الأربعة: كل خيار في "options" يجب أن يكون كلمة واحدة فقط أو كلمتين سهلتين مشكولتين.
+4. ممنوع منعاً باتاً: الإعراب، القواعد النحوية المعقدة، المفعول به، النواسخ، الجمل الطويلة الصعبة.
+5. دقة الإجابة: "correctIndex" (من 0 إلى 3) يجب أن يشير بدقة إلى الخيار الصحيح في "options".
+6. التفسير: تفسير بسيط جداً وموضوعي يشرح الإجابة الصحيحة (مثال: «كلمة دار تبدأ بحرف الدال»). ممنوع منعاً باتاً كتابة "أحسنت" أو "ممتاز" داخل التفسير لأن التفسير يعرض للتلميذ حتى في حال الخطأ.
+
+FORMAT DE RÉPONSE JSON OBLIGATOIRE :
+{
+  "topic": "${topic || targetSubject}",
+  "questions": [
+    {
+      "question": "نص السؤال القصير والمشكول...",
+      "options": ["خيار 1", "خيار 2", "خيار 3", "خيار 4"],
+      "correctIndex": 0,
+      "explanation": "الإجابة الصحيحة هي [...] لأن [...]"
+    }
+  ]
+}`;
+      userPrompt = `قم بتوليد ${targets.length} أسئلة QCM سهلة جداً ومشجعة ومشكولة لتلميذ عمره 6 سنوات بالأولى ابتدائي.`;
+    } else {
+      systemPrompt = `أنت Tuteur IA، أستاذ بيداغوجي ذكي ومساعد تعليمي للمناهج الدراسية بالمغرب.
+يجب عليك توليد اختبار أسئلة متعددة الاختيارات (QCM) لـ ${studentName} في مادة ${targetSubject} (${targetDifficulty}).
+
+المواضيع والمفاهيم المستهدفة:
+${formattedBlueprint}
+
+قواعد بيداغوجية صارمة وإلزامية:
+1. ممنوع منعاً باتاً نسخ عناوين النقاط في نص السؤال! يجب صياغة سؤال تطبيقي واقعي مع جملة توضيحية مشكولة (مثال: «في جُمْلَةِ: «قَرَأَ الطَّالِبُ القِصَّةَ»، مَا هُوَ الفَاعِلُ؟»).
+2. شكل تام: اضبط السؤال والاختيارات بالحركات التامة (الفتحة، الضمة، الكسرة، السكون).
+3. 4 خيارات حقيقية: مصفوفة "options" يجب أن تضم بالضبط 4 خيارات واضحة ومختلفة (يمنع الخيارات الناقصة أو المكررة).
+4. دقة الإجابة: "correctIndex" (من 0 إلى 3) يجب أن يشير بدقة إلى الخيار الصحيح في "options".
+5. التفسير: في "explanation"، اكتب: «الإجابة الصحيحة هي [...] لأن...».
+
+FORMAT DE RÉPONSE JSON OBLIGATOIRE :
+{
+  "topic": "${topic || targetSubject}",
+  "questions": [
+    {
+      "question": "نص السؤال المشكول مع المثال...",
+      "options": ["الخيار الأول", "الخيار الثاني", "الخيار الثالث", "الخيار الرابع"],
+      "correctIndex": 0,
+      "explanation": "الإجابة الصحيحة هي [...] لأن..."
+    }
+  ]
+}`;
+      userPrompt = `قم بتوليد ${targets.length} أسئلة QCM تطبيقية مشكولة ومتميزة وفق القواعد أعلاه دون تكرار أي عنوان.`;
+    }
+  } else if (isEnglish) {
+    if (isPrimaire1) {
+      systemPrompt = `You are TutorAI, a friendly and gentle primary school tutor for a 6-year-old child in 1st Grade Primary (Moroccan school).
+Generate a very simple, cheerful multiple-choice quiz (MCQ) for ${studentName} in ${targetSubject}.
+
+TARGET BLUEPRINT:
+${formattedBlueprint}
+
+STRICT CP / 1ST GRADE RULES:
+1. 6-YEAR-OLD CHILD LEVEL: Super simple, direct questions (5 to 8 words maximum).
+2. TOPICS: Numbers 1 to 5, primary colors (red, blue, yellow, green), familiar animals (cat, dog), simple greetings (Hello, Goodbye).
+3. FORBIDDEN: Complex grammar, past tenses, long texts, difficult words.
+4. OPTIONS: Exactly 4 short, 1-word options per question.
+
+MANDATORY JSON FORMAT:
+{
+  "topic": "${topic || targetSubject}",
+  "questions": [
+    {
+      "question": "Short simple question...",
+      "options": ["Opt1", "Opt2", "Opt3", "Opt4"],
+      "correctIndex": 0,
+      "explanation": "Great job! The correct answer is..."
+    }
+  ]
+}`;
+      userPrompt = `Generate exactly ${targets.length} very simple questions for a 6-year-old child in 1st Grade Primary.`;
+    } else {
+      systemPrompt = `You are TutorAI, an expert AI pedagogical tutor.
+Generate a complete interactive multiple-choice quiz (MCQ) for ${studentName} in ${targetSubject} (${targetDifficulty} level).
+
+MANDATORY PEDAGOGICAL BLUEPRINT — COVER EACH TARGET POINT WITH 1 UNIQUE QUESTION:
+${formattedBlueprint}
+
+CRITICAL RULES:
+1. DO NOT copy the blueprint titles! Write full, real, concrete questions with practical examples.
+2. 100% DIVERSITY: Zero duplicate sentence structures or phrasing patterns.
+3. EXACTLY 4 DISTINCT OPTIONS: Every question MUST have 4 descriptive answer choices in "options". NEVER use dummy labels like "Option A" or "Choice 1".
+4. STRICT ALIGNMENT: "correctIndex" (0, 1, 2, or 3) MUST point directly to the correct answer in "options".
+5. EXPLANATION: Provide a clear 1-2 sentence pedagogical explanation in "explanation".
+
+MANDATORY JSON FORMAT:
+{
+  "topic": "${topic || targetSubject}",
+  "questions": [
+    {
+      "question": "Full clear question text...",
+      "options": ["First option", "Second option", "Third option", "Fourth option"],
+      "correctIndex": 0,
+      "explanation": "Clear explanation of why this answer is correct..."
+    }
+  ]
+}`;
+      userPrompt = `Generate exactly ${targets.length} distinct MCQ questions covering each point of the curriculum blueprint.`;
+    }
+  } else {
+    if (isPrimaire1) {
+      systemPrompt = `Tu es TutorAI, tuteur pédagogique bienveillant et encourageant pour un enfant de 6 ans en 1ère année primaire (CP - 1ère AP au Maroc).
+Tu dois créer un quiz QCM très doux, visuel, intuitif et parfaitement adapté à son âge pour ${studentName}.
+Matière : ${targetSubject}
+Niveau : 1ère année primaire (CP - 6 ans)
+
+PLAN PÉDAGOGIQUE POUR LE CP :
+${formattedBlueprint}
+
+DIRECTIVES IMPÉRATIVES DE NIVEAU POUR UN ÉLÈVE DE 1ÈRE ANNÉE PRIMAIRE (CP - 6 ANS) :
+1. ÉNONCÉS ULTRA-COURTS : 6 à 12 mots simples maximum. Vocabulaire du quotidien d'un enfant de 6 ans (école, animaux, fruits, jouets, famille, maison).
+2. EN MATHÉMATIQUES CP :
+   - Strictement limité aux nombres de 1 à 10.
+   - Dénombrement d'objets, suite des nombres (qui vient après/avant), comparaison (plus grand/petit).
+   - Petites additions sous 10 uniquement (ex: 2 + 1 = 3, 3 + 2 = 5).
+   - Formes géométriques simples (rond/cercle, carré, triangle).
+   - STRICTEMENT INTERDIT : multiplications (ex: 6×3), divisions, fractions (ex: 2/4), pourcentages, équations avec x, calculs complexes.
+3. EN FRANÇAIS CP :
+   - Reconnaissance des lettres (alphabet), voyelles (a, e, i, o, u), son initial des mots familiers.
+   - Articles simples (un / une, le / la).
+   - Mots du quotidien (chat, chien, pomme, maman, table).
+   - STRICTEMENT INTERDIT : passé composé, imparfait, futur, COD/COI, subjonctif, grammaire abstraite.
+4. EN ÉVEIL SCIENTIFIQUE (SVT) CP :
+   - Les 5 sens (yeux pour voir, oreilles pour entendre, nez pour sentir, langue pour goûter, mains pour toucher).
+   - Le jour et la nuit, les bébés animaux (chiot, poussin), l'hygiène (se laver les mains avec du savon, se brosser les dents).
+5. EXACTEMENT 4 OPTIONS TRÈS COURTES : 1 ou 2 mots simples par option dans "options" (ex: "3", "4", "2", "5" ou "Un chat", "Un chien", "Un oiseau", "Un poisson").
+6. EXPLICATION : Une phrase courte et pédagogique expliquant la bonne réponse (« La bonne réponse est ... car ... »). STRICTEMENT INTERDIT d'écrire "Bravo" ou "Félicitations" dans l'explication, car elle est également affichée quand l'élève commet une erreur.
+
+FORMAT DE RÉPONSE JSON OBLIGATOIRE :
+{
+  "topic": "${topic || targetSubject}",
+  "questions": [
+    {
+      "question": "Énoncé court et facile pour un enfant de 6 ans",
+      "options": ["Mot 1", "Mot 2", "Mot 3", "Mot 4"],
+      "correctIndex": 0,
+      "explanation": "La bonne réponse est [...] car [...]"
+    }
+  ]
+}`;
+      userPrompt = `Génère exactement les ${targets.length} questions faciles et adaptées à un enfant de 6 ans en 1ère primaire.`;
+    } else {
+      systemPrompt = `Tu es TutorAI, tuteur pédagogique personnel intelligent.
 Tu dois générer un quiz QCM interactif et formateur pour ${studentName}.
 Matière : ${targetSubject}
 Niveau scolaire : ${targetLevel}
 Difficulté cible : ${targetDifficulty.toUpperCase()}
 ${diffGuidance}
-${topic ? `Thème spécifique demandé : ${topic}` : 'Choisis un thème fondamental ou formateur adapté au niveau.'}
-${avoidListStr ? `IMPORTANT — NE REPRODUIS PAS CES QUESTIONS DÉJÀ RÉALISÉES : ${avoidListStr}` : ''}
 
-Règles strictes de format :
-1. Génère exactement ${aiPromptCount} questions inédites respectant STRICTEMENT le niveau ${targetDifficulty.toUpperCase()}.
-2. Chaque question doit proposer exactement 4 propositions réelles et descriptives rédigées en toutes lettres.
-3. RÈGLE CRITIQUE : Dans le tableau "options", chaque élément DOIT être une vraie phrase descriptive (JAMAIS "Choix 1", "Option A", ou du texte vide).
-4. Fournis une explication pédagogique détaillée et bienveillante pour chaque question.
-5. Si la matière est l'arabe, les questions et propositions doivent être correctement voyellées (شكل).
+PLAN PÉDAGOGIQUE IMPÉRATIF — COUVRE CHAQUE POINT DU PLAN SUIVANT (1 QUESTION DISTINCTE PAR POINT) :
+${formattedBlueprint}
+
+RÈGLES CAPITALES STRICTES :
+1. NE RECOPIE PAS les consignes ou titres du plan ! Rédige un VRAI ÉNONCÉ concret, direct et complet pour l'élève avec des exemples réels (ex: « Dans la phrase : ... », « Calculez : ... », « Quel est... »).
+2. DIVERSITÉ ABSOLUE : Chaque question a sa propre formulation. STRICTEMENT AUCUN copier-coller ni répétition de structure de phrase.
+3. EXACTEMENT 4 OPTIONS DISTINCTES : Chaque question DOIT obligatoirement avoir 4 propositions de réponse complètes et rédigées en toutes lettres dans "options" : [opt1, opt2, opt3, opt4]. Jamais 2, jamais 3, jamais 5. INTERDICTION FORMELLE de placeholders comme "Choix 1", "Option A", texte vide, ou options dupliquées.
+4. SYNONYMES ET ANTONYMES : Le mot testé dans la question ne doit JAMAIS figurer dans les 4 propositions de réponse (ex: pour le synonyme de rapide, propose véloce, lent, calme, immobile).
+5. ALIGNEMENT STRICT : "correctIndex" (0, 1, 2 ou 3) DOIT pointer précisément vers la réponse juste dans "options".
+6. EXPLICATION PÉDAGOGIQUE CLAIRE : Formule obligatoirement : « La bonne réponse est [bonne réponse] car ... ».
 
 FORMAT DE RÉPONSE JSON OBLIGATOIRE :
 {
-  "topic": "Titre du thème abordé",
+  "topic": "${topic || targetSubject}",
   "questions": [
     {
       "question": "Énoncé précis et logique de la question",
@@ -2133,41 +2946,57 @@ FORMAT DE RÉPONSE JSON OBLIGATOIRE :
     }
   ]
 }`;
+      userPrompt = `Génère exactement les ${targets.length} questions QCM inédites en respectant rigoureusement chaque point du plan pédagogique.`;
+    }
+  }
 
   let questions = [];
   let resolvedTopic = topic || `Notions clés en ${targetSubject}`;
+  let ollamaAcceptedCount = 0;
 
   try {
-    console.log(`[AI-Quiz] Generating dynamic quiz with Ollama for ${studentName} (${targetSubject} - ${targetDifficulty} - ${finalCount} questions)...`);
+    console.log(`[AI-Quiz] Generating dynamic quiz with Ollama for ${studentName} (${targetSubject} - ${targetDifficulty} - requesting ${targets.length} questions)...`);
     const messages = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: `Génère ${aiPromptCount} questions QCM inédites de niveau ${targetDifficulty.toUpperCase()} en ${targetSubject}. Chaque option doit être une vraie phrase descriptive.` }
+      { role: 'user', content: userPrompt }
     ];
 
-    const result = await queryOllamaJson(messages, 35000);
+    const result = await queryOllamaJson(messages, 65000, {
+      temperature: 0.5,
+      top_p: 0.9
+    });
     if (result && Array.isArray(result.questions) && result.questions.length >= 2) {
       resolvedTopic = result.topic || resolvedTopic;
-      const sanitized = result.questions.map(q => {
-        return sanitizeQuestionOptions(q, resolvedTopic, subjectKey, targetDifficulty);
-      });
-      questions = sanitized.filter(q => Array.isArray(q.options) && q.options.length === 4);
+      for (const rawQ of result.questions) {
+        const sanitized = sanitizeQuestionOptions(rawQ, resolvedTopic, subjectKey, targetDifficulty, isPrimaire1);
+        if (!sanitized) continue;
+        if (isQuestionDuplicate(sanitized.question, questions, avoidList, 0.58)) {
+          console.log(`[AI-Quiz] Filtered duplicate AI question: "${sanitized.question.slice(0, 35)}..."`);
+          continue;
+        }
+        questions.push(sanitized);
+        ollamaAcceptedCount++;
+        if (questions.length >= finalCount) break;
+      }
     }
   } catch (err) {
-    console.warn(`[AI-Quiz] Ollama batch skipped or timed out (${err.message}). Using calibrated subject pool.`);
+    console.warn(`[AI-Quiz] Ollama batch skipped or timed out (${err.message}). Using calibrated backup pool.`);
   }
 
-  // Top-up with high-quality bank questions to reach EXACTLY the requested finalCount (5, 10, or 15 questions)
+  // If Ollama completed all requested questions, we are done!
+  // Only top-up if Ollama fell short
   if (questions.length < finalCount) {
+    console.log(`[AI-Quiz] Ollama provided ${questions.length}/${finalCount} questions. Completing from certified curriculum bank.`);
     const existingTexts = questions.map(q => (q.question || '').toLowerCase().slice(0, 25));
-    const lowerAvoided = (avoidQuestions || []).map(q => (q || '').toLowerCase());
+    const lowerAvoided = avoidList.map(q => (q || '').toLowerCase());
 
     const isExcluded = (txt) => {
       const low = (txt || '').toLowerCase();
       return existingTexts.some(ex => low.includes(ex)) || lowerAvoided.some(av => av.includes(low.slice(0, 20)));
     };
 
-    // 1. Primary candidate pool: target difficulty for this subject
-    const primaryBank = shuffleArray(getQuestionsFromBank(subjectKey, targetDifficulty));
+    // 1. Primary candidate pool: target difficulty (or CP bank if CP)
+    const primaryBank = shuffleArray(getQuestionsFromBank(subjectKey, targetDifficulty, isPrimaire1));
     for (let item of primaryBank) {
       if (questions.length >= finalCount) break;
       const txt = item.question || '';
@@ -2177,12 +3006,12 @@ FORMAT DE RÉPONSE JSON OBLIGATOIRE :
       }
     }
 
-    // 2. Secondary candidate pool: other difficulties of the SAME subject
-    if (questions.length < finalCount) {
+    // 2. Secondary candidate pool: other difficulties of the SAME subject (only for non-CP)
+    if (questions.length < finalCount && !isPrimaire1) {
       const otherTiers = ['Intermédiaire', 'Débutant', 'Avancé'].filter(t => t !== targetDifficulty);
       for (let tier of otherTiers) {
         if (questions.length >= finalCount) break;
-        const tierBank = shuffleArray(getQuestionsFromBank(subjectKey, tier));
+        const tierBank = shuffleArray(getQuestionsFromBank(subjectKey, tier, isPrimaire1));
         for (let item of tierBank) {
           if (questions.length >= finalCount) break;
           const txt = item.question || '';
@@ -2194,69 +3023,46 @@ FORMAT DE RÉPONSE JSON OBLIGATOIRE :
       }
     }
 
-    // 3. Third candidate pool: relax avoid list for current subject
-    if (questions.length < finalCount) {
-      const subjectPool = shuffleArray([
-        ...(QUIZ_BANKS_BY_SUBJECT[subjectKey]?.['Intermédiaire'] || []),
-        ...(QUIZ_BANKS_BY_SUBJECT[subjectKey]?.['Débutant'] || []),
-        ...(QUIZ_BANKS_BY_SUBJECT[subjectKey]?.['Avancé'] || [])
-      ]);
-      for (let item of subjectPool) {
-        if (questions.length >= finalCount) break;
-        const txt = (item.question || '').toLowerCase().slice(0, 25);
-        if (!existingTexts.includes(txt)) {
-          questions.push(randomizeQuestionOptions(item));
-          existingTexts.push(txt);
-        }
-      }
-    }
-
-    // 4. Fourth candidate pool: procedural generator to guarantee strictly finalCount questions
+    // 3. Third candidate pool: procedural generator
     if (questions.length < finalCount) {
       const needed = finalCount - questions.length;
-      const procedural = generateProceduralQuizQuestions(subjectKey, targetDifficulty, needed, questions);
+      const procedural = generateProceduralQuizQuestions(subjectKey, targetDifficulty, needed, questions, isPrimaire1);
       for (let p of procedural) {
         if (questions.length >= finalCount) break;
         questions.push(randomizeQuestionOptions(p));
       }
     }
-
-    // 5. Ultimate safeguard loop
-    let safetyCounter = 0;
-    while (questions.length < finalCount && safetyCounter < 40) {
-      safetyCounter++;
-      const pool = QUIZ_BANKS_BY_SUBJECT[subjectKey]?.[targetDifficulty] ||
-                   QUIZ_BANKS_BY_SUBJECT['gestion']['Intermédiaire'] ||
-                   QUIZ_BANKS_BY_SUBJECT['gestion']['Débutant'];
-      const pick = pool[safetyCounter % pool.length];
-      if (pick) {
-        questions.push(randomizeQuestionOptions(pick));
-      } else {
-        break;
-      }
-    }
   }
 
-  // Final shuffle and strictly slice to finalCount
-  const finalQuestions = shuffleArray(questions).slice(0, finalCount);
+  const finalQuestions = questions.slice(0, finalCount);
+
+  let generatedBy = 'Tuteur IA (Ollama llama3.2)';
+  if (ollamaAcceptedCount === 0) {
+    generatedBy = 'Tuteur IA (Banques certifiées)';
+  } else if (ollamaAcceptedCount < finalCount) {
+    generatedBy = 'Tuteur IA (Ollama llama3.2 + Banques certifiées)';
+  }
 
   return {
     topic: resolvedTopic,
     questions: finalQuestions,
     difficulty: targetDifficulty,
     count: finalQuestions.length,
-    generatedBy: questions.length > 0 ? 'Tuteur IA (Ollama + Banques certifiées)' : 'Tuteur IA (Banques certifiées)'
+    generatedBy
   };
 }
 
 /**
  * Generates a full practical exercise using Ollama or dynamic procedural templates.
  */
-async function generateAiExercise({ subject, topic, difficulty = 'Intermédiaire', avoidIds = [] }, studentContext = {}) {
+async function generateAiExercise({ subject, topic, level, difficulty = 'Intermédiaire', avoidIds = [] }, studentContext = {}) {
   const targetSubject = subject || 'Général';
-  const targetDifficulty = ['Débutant', 'Intermédiaire', 'Avancé'].includes(difficulty) ? difficulty : 'Intermédiaire';
+  const targetLevel = level || studentContext?.student?.education_level || '1ère année primaire';
+  const tier = detectEducationTier(targetLevel);
+  const isPrimaire1 = tier === 'primaire_1';
+  const targetDifficulty = ['Débutant', 'Intermédiaire', 'Avancé'].includes(difficulty) ? difficulty : (isPrimaire1 ? 'Débutant' : 'Intermédiaire');
   const studentName = studentContext?.student?.first_name || 'l\'élève';
-  const studentLevel = studentContext?.student?.education_level || 'Lycée / Université';
+  const studentLevel = targetLevel;
 
   const exerciseGuidance = {
     'Débutant': `🎯 DIFFICULTÉ DÉBUTANT :
@@ -2270,7 +3076,90 @@ async function generateAiExercise({ subject, topic, difficulty = 'Intermédiaire
 - Étude de cas approfondie, cas limites, questions ouvertes et synthèse rigoureuse.`
   }[targetDifficulty];
 
-  const systemPrompt = `Tu es TutorAI, tuteur pédagogique de haut niveau.
+  let systemPrompt = '';
+  if (isPrimaire1) {
+    const isAr = targetSubject.toLowerCase().includes('arabe') || targetSubject.toLowerCase().includes('islam');
+    if (isAr) {
+      systemPrompt = `أنت Tuteur IA، أستاذ بيداغوجي صبور لتلاميذ السنة الأولى ابتدائي (عمر التلميذ: 6 سنوات).
+أنشئ ورقة تمرين تطبيقي مصغر وممتع لـ ${studentName} في مادة ${targetSubject}.
+
+قواعد 1ère année primaire (السنة الأولى ابتدائي - 6 سنوات):
+1. نص الوضعية (contextContent): قصة قصيرة جداً من سطرين (2 أو 3 جمل مشكولة) من عالم الطفل والمدرسة والبيت (أقلام، تفاح، قطة، ألعاب).
+2. الأسئلة: 2 أو 3 أسئلة قصيرة جداً ومباشرة (مثال: السؤال 1: كم عدد الأقلام في المقلمة؟، السؤال 2: كم عدد الأقلام كلها؟).
+3. مدة الإنجاز: "5 دقائق"، والنقاط: 20 نقطة.
+4. الإرشادات: عبارات مشجعة ومبسطة جداً ("يمكنك العد بأصابع يديك").
+5. خطوات الحل: خطوتان مبسطتان مع الجواب الواضح.
+6. ممنوع منعاً باتاً: الإعراب، المسائل الرياضية المعقدة، والكلمات الصعبة.
+
+FORMAT DE RÉPONSE JSON OBLIGATOIRE :
+{
+  "title": "ورشة الأقلام والحساب الممتع",
+  "category": "تطبيق ميسر • الأولى ابتدائي",
+  "estimatedTime": "5 دقائق",
+  "points": 20,
+  "objective": "العد البسيط وتمييز عناصر المقلمة المدرسية",
+  "contextType": "arabic",
+  "contextContent": "فِي مِقْلَمَةِ أَمِينٍ 3 أَقْلَامٍ زَرْقَاءَ وَقَلَمَانِ أَحْمَرَانِ.",
+  "questions": [
+    "كَمْ عَدَدُ الأَقْلَامِ الزَّرْقَاءِ فِي المِقْلَمَةِ ؟",
+    "كَمْ عَدَدُ جَمِيعِ الأَقْلَامِ مَعًا (3 + 2) ؟"
+  ],
+  "hints": [
+    { "title": "إرشاد 1", "content": "اجمع 3 مع 2 بالعد على أصابع يديك." }
+  ],
+  "solutionSteps": [
+    { "label": "الخطوة 1", "detail": "الأقلام الزرقاء عددها 3." },
+    { "label": "الخطوة 2", "detail": "المجموع الكلي: 3 + 2 = 5 أقلام." }
+  ],
+  "solutionSummary": "عدد الأقلام الكلي هو 5 أقلام.",
+  "pitfalls": ["الانتباه لعدم نسيان أي قلم أثناء العد."],
+  "keyTakeaway": "3 + 2 = 5.",
+  "checklist": ["عددتُ الأقلام بدقة", "كتبتُ الجواب الصحيح"]
+}`;
+    } else {
+      systemPrompt = `Tu es TutorAI, tuteur bienveillant pour un élève de 6 ans en 1ère année primaire (CP - 1ère AP au Maroc).
+Crée un mini-atelier d'exercice très doux, amusant et imagé pour ${studentName}.
+Matière : ${targetSubject}
+Niveau : 1ère année primaire (CP - 6 ans)
+${topic ? `Thème spécifique : ${topic}` : 'Choisis un atelier du quotidien (fruits, animaux, cartable, trousse, formes).'}
+
+DIRECTIVES STRICTES 1ÈRE ANNÉE PRIMAIRE (CP - 6 ANS) :
+1. ÉNONCÉ / CONTEXTE (contextContent) : Une petite histoire concrète de 2 ou 3 phrases très simples (ex: « Sarah a 3 billes bleues et 2 billes rouges dans son sac. » ou « Le petit chat boit son bol de lait. »).
+2. QUESTIONS : 2 ou 3 questions courtes et très simples (ex: « 1. Combien de billes bleues a Sarah ? », « 2. Combien de billes Sarah a-t-elle en tout (3 + 2) ? »).
+3. ESTIMATED TIME : "5 min"
+4. POINTS : 20
+5. HINTS : 1 ou 2 indices chaleureux et simples (« Tu peux compter sur tes doigts... »).
+6. SOLUTION : Résolution en 2 petites étapes claires avec le résultat final.
+7. STRICTEMENT INTERDIT : Théorèmes, équations avec x, fractions, pourcentages, vocabulaire universitaire ou abstrait.
+
+FORMAT DE RÉPONSE JSON OBLIGATOIRE :
+{
+  "title": "Titre mignon et adapté (ex: Le panier de pommes de Sarah)",
+  "category": "Mini-Atelier Découverte • CP",
+  "estimatedTime": "5 min",
+  "points": 20,
+  "objective": "Compter de petits objets du quotidien",
+  "contextType": "text",
+  "contextContent": "Courte histoire de 2 phrases adaptées au CP...",
+  "questions": [
+    "Première question très simple...",
+    "Deuxième question très simple..."
+  ],
+  "hints": [
+    { "title": "Indice 1", "content": "Astuce toute simple..." }
+  ],
+  "solutionSteps": [
+    { "label": "Étape 1", "detail": "Réponse à la question 1..." },
+    { "label": "Étape 2", "detail": "Réponse à la question 2..." }
+  ],
+  "solutionSummary": "La bonne réponse expliquée en 1 phrase d'enfant.",
+  "pitfalls": ["Prendre son temps pour bien compter."],
+  "keyTakeaway": "Ce qu'on a appris de façon amusante.",
+  "checklist": ["J'ai bien compté", "J'ai trouvé la réponse"]
+}`;
+    }
+  } else {
+    systemPrompt = `Tu es TutorAI, tuteur pédagogique de haut niveau.
 Génère un exercice pratique complet, structuré, réaliste et formateur pour ${studentName}.
 Matière : ${targetSubject}
 Niveau de l'élève : ${studentLevel}
@@ -2309,15 +3198,19 @@ FORMAT DE RÉPONSE JSON OBLIGATOIRE :
     "J'ai validé la cohérence du résultat final"
   ]
 }`;
+  }
 
   try {
-    console.log(`[AI-Exercise] Generating exercise with Ollama for ${studentName} (${targetSubject} - ${targetDifficulty})...`);
+    console.log(`[AI-Exercise] Generating exercise with Ollama for ${studentName} (${targetSubject} - ${targetDifficulty} - level: ${targetLevel})...`);
     const messages = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: `Génère un exercice de niveau ${targetDifficulty} en ${targetSubject}.` }
+      { role: 'user', content: isPrimaire1 ? `Génère un mini-exercice amusant et facile pour un élève de 6 ans en 1ère primaire (${targetSubject}).` : `Génère un exercice de niveau ${targetDifficulty} en ${targetSubject}.` }
     ];
 
-    const result = await queryOllamaJson(messages, 35000);
+    const result = await queryOllamaJson(messages, 65000, {
+      temperature: 0.5,
+      top_p: 0.9
+    });
     if (result && result.title && Array.isArray(result.questions) && result.questions.length >= 2) {
       console.log(`[AI-Exercise] Ollama generated exercise: "${result.title}".`);
       return {
@@ -2325,10 +3218,10 @@ FORMAT DE RÉPONSE JSON OBLIGATOIRE :
         title: result.title,
         subject: targetSubject,
         difficulty: targetDifficulty,
-        category: result.category || `Pratique en ${targetSubject}`,
-        estimatedTime: result.estimatedTime || (targetDifficulty === 'Débutant' ? '10 min' : '15 min'),
-        points: result.points || (targetDifficulty === 'Débutant' ? 30 : targetDifficulty === 'Intermédiaire' ? 40 : 50),
-        objective: result.objective || `Maîtrise pratique des notions de ${targetSubject}.`,
+        category: result.category || (isPrimaire1 ? `Atelier CP (${targetSubject})` : `Pratique en ${targetSubject}`),
+        estimatedTime: result.estimatedTime || (isPrimaire1 ? '5 min' : targetDifficulty === 'Débutant' ? '10 min' : '15 min'),
+        points: result.points || (isPrimaire1 ? 20 : targetDifficulty === 'Débutant' ? 30 : targetDifficulty === 'Intermédiaire' ? 40 : 50),
+        objective: result.objective || (isPrimaire1 ? `Découverte et entraînement guidé en ${targetSubject}.` : `Maîtrise pratique des notions de ${targetSubject}.`),
         contextType: result.contextType || (targetSubject.toLowerCase().includes('arabe') ? 'arabic' : 'text'),
         contextContent: result.contextContent || '',
         contextTranslation: result.contextTranslation || undefined,
@@ -2337,12 +3230,109 @@ FORMAT DE RÉPONSE JSON OBLIGATOIRE :
         solutionSteps: Array.isArray(result.solutionSteps) ? result.solutionSteps : [],
         solutionSummary: result.solutionSummary || 'Résolution méthodologique guidée.',
         pitfalls: Array.isArray(result.pitfalls) ? result.pitfalls : ['Attention aux erreurs d\'inattention.'],
-        keyTakeaway: result.keyTakeaway || 'Appliquer la méthode rigoureusement étape par étape.',
-        checklist: Array.isArray(result.checklist) ? result.checklist : ['J\'ai répondu à toutes les questions']
+        keyTakeaway: result.keyTakeaway || (isPrimaire1 ? 'Bravo pour tes efforts !' : 'Appliquer la méthode rigoureusement étape par étape.'),
+        checklist: Array.isArray(result.checklist) ? result.checklist : ['J\'ai répondu à toutes les questions'],
+        generatedBy: 'Tuteur IA (Ollama llama3.2)'
       };
     }
   } catch (err) {
     console.warn(`[AI-Exercise] Ollama skipped or timed out (${err.message}). Using dynamic generator.`);
+  }
+
+  // If 1ère primaire, return an age-appropriate fallback exercise
+  if (isPrimaire1) {
+    const isAr = targetSubject.toLowerCase().includes('arabe') || targetSubject.toLowerCase().includes('islam');
+    if (isAr) {
+      return {
+        id: `cp-ex-${Date.now()}`,
+        title: `حِسَابٌ بَسِيطٌ : أَقْلَامُ أَمِينٍ فِي المِقْلَمَةِ`,
+        subject: targetSubject,
+        difficulty: 'Débutant',
+        category: `تطبيق ميسر • الأولى ابتدائي`,
+        estimatedTime: '5 دقائق',
+        points: 20,
+        objective: 'العد البسيط وتمييز عناصر المقلمة المدرسية.',
+        contextType: 'arabic',
+        contextContent: '« فِي مِقْلَمَةِ أَمِينٍ 3 أَقْلَامٍ زَرْقَاءَ وَقَلَمَانِ أَحْمَرَانِ. »',
+        questions: [
+          'كَمْ عَدَدُ الأَقْلَامِ الزَّرْقَاءِ فِي المِقْلَمَةِ ؟',
+          'كَمْ مَجْمُوعُ كُلِّ الأَقْلَامِ مَعًا (3 + 2) ؟'
+        ],
+        hints: [
+          { title: 'إرشاد 1', content: 'احسب الأقلام الزرقاء والحمراء معاً على أصابعك.' }
+        ],
+        solutionSteps: [
+          { label: 'الخطوة 1', detail: 'الأقلام الزرقاء: 3 أقلام.' },
+          { label: 'الخطوة 2', detail: 'المجموع الإجمالي: 3 + 2 = 5 أقلام.' }
+        ],
+        solutionSummary: 'عدد الأقلام الكلي هو 5 أقلام.',
+        pitfalls: ['عدم التسرع أثناء العد باليدين.'],
+        keyTakeaway: '3 + 2 = 5.',
+        checklist: ['عددتُ الأقلام بدقة', 'كتبتُ الجواب النهائي'],
+        generatedBy: 'Tuteur IA (Générateur pédagogique CP)'
+      };
+    } else {
+      const sLower = targetSubject.toLowerCase();
+      if (sLower.includes('math')) {
+        return {
+          id: `cp-ex-${Date.now()}`,
+          title: `Le petit panier de fruits de Sarah`,
+          subject: targetSubject,
+          difficulty: 'Débutant',
+          category: `Atelier Découverte • CP (1ère primaire)`,
+          estimatedTime: '5 min',
+          points: 20,
+          objective: 'Dénombrer de petits objets et calculer une addition simple (somme <= 5).',
+          contextType: 'text',
+          contextContent: 'Sarah prépare un goûter. Elle a 3 belles pommes rouges dans son panier. Sa maman lui donne 2 pommes vertes.',
+          questions: [
+            'Combien de pommes rouges Sarah a-t-elle au début ?',
+            'Combien de pommes Sarah a-t-elle en tout dans son panier (3 + 2) ?'
+          ],
+          hints: [
+            { title: 'Indice 1', content: 'Tu peux compter sur tes doigts : mets 3 doigts puis ajoute 2 doigts.' }
+          ],
+          solutionSteps: [
+            { label: 'Étape 1 : Les pommes rouges', detail: 'Sarah a 3 pommes rouges au début.' },
+            { label: 'Étape 2 : Le total', detail: '3 + 2 = 5. Sarah a 5 pommes en tout.' }
+          ],
+          solutionSummary: 'Sarah a 5 pommes au total (3 + 2 = 5).',
+          pitfalls: ['Prends bien ton temps pour compter chaque doigt.'],
+          keyTakeaway: 'Quand on ajoute 2 à 3, on obtient 5 !',
+          checklist: ['J\'ai bien compté les pommes', 'J\'ai écrit le bon résultat'],
+          generatedBy: 'Tuteur IA (Générateur pédagogique CP)'
+        };
+      } else {
+        return {
+          id: `cp-ex-${Date.now()}`,
+          title: `Les animaux de la cour d'école`,
+          subject: targetSubject,
+          difficulty: 'Débutant',
+          category: `Atelier Découverte • CP (1ère primaire)`,
+          estimatedTime: '5 min',
+          points: 20,
+          objective: 'Reconnaître des mots familiers et des caractéristiques simples.',
+          contextType: 'text',
+          contextContent: 'Dans la cour, un petit chat gris dort au soleil. Soudain, un oiseau chante sur la branche.',
+          questions: [
+            'Quel animal dort tranquillement au soleil ?',
+            'Où chante le petit oiseau ?'
+          ],
+          hints: [
+            { title: 'Indice 1', content: 'Relis la première ligne : quel animal est gris et dort ?' }
+          ],
+          solutionSteps: [
+            { label: 'Étape 1', detail: 'C\'est le petit chat gris qui dort au soleil.' },
+            { label: 'Étape 2', detail: 'L\'oiseau chante sur la branche.' }
+          ],
+          solutionSummary: 'Le petit chat dort au soleil et l\'oiseau chante sur la branche.',
+          pitfalls: ['Regarde bien les mots du texte pour ne pas confondre le chat et l\'oiseau.'],
+          keyTakeaway: 'On retrouve facilement l\'information dans la petite phrase !',
+          checklist: ['J\'ai trouvé le nom de l\'animal', 'J\'ai lu attentivement'],
+          generatedBy: 'Tuteur IA (Générateur pédagogique CP)'
+        };
+      }
+    }
   }
 
   const randomSeed = Math.floor(Math.random() * 900) + 100;
@@ -2378,24 +3368,18 @@ FORMAT DE RÉPONSE JSON OBLIGATOIRE :
     solutionSteps: [
       {
         label: 'Étape 1 : Lecture analytique',
-        detail: `Extraire les hypothèses principales et poser les définitions des termes employés.`
+        detail: 'Identification précise des données de départ et du résultat attendu.'
       },
       {
-        label: 'Étape 2 : Application rigoureuse',
-        detail: `Procéder à l'application numérique ou à la déduction logique en justifiant chaque intermédiaire.`
+        label: 'Étape 2 : Résolution méthodique',
+        detail: 'Déroulement rigoureux du calcul ou du raisonnement pas-à-pas.'
       }
     ],
-    solutionSummary: `L'exercice permet de vérifier l'assimilation des principes clés de ${targetSubject}.`,
-    pitfalls: [
-      `Confondre les grandeurs ou appliquer une formule sans vérifier ses conditions de validité.`,
-      `Oublier de vérifier la cohérence globale de la réponse finale.`
-    ],
-    keyTakeaway: `Une méthode rigoureuse et organisée permet de résoudre tout cas pratique sans blocage.`,
-    checklist: [
-      'J\'ai vérifié les hypothèses de départ',
-      'J\'ai justifié mes étapes intermédiaires',
-      'J\'ai validé la cohérence de mon résultat'
-    ]
+    solutionSummary: 'Résolution guidée complète de l\'exercice.',
+    pitfalls: ['Attention aux erreurs d\'inattention.'],
+    keyTakeaway: 'Appliquer la méthode rigoureusement étape par étape.',
+    checklist: ['J\'ai répondu à toutes les questions'],
+    generatedBy: 'Tuteur IA (Générateur pédagogique)'
   };
 }
 
@@ -2404,20 +3388,51 @@ FORMAT DE RÉPONSE JSON OBLIGATOIRE :
  */
 async function evaluateStudentExercise({ exercise, studentDraft }, studentContext = {}) {
   const studentName = studentContext?.student?.first_name || 'l\'élève';
+  const studentLevel = studentContext?.student?.education_level || '';
+  const isCP = detectEducationTier(studentLevel) === 'primaire_1';
   const cleanDraft = (studentDraft || '').trim();
 
-  if (!cleanDraft || cleanDraft.length < 5) {
+  const minLength = isCP ? 1 : 5;
+  if (!cleanDraft || cleanDraft.length < minLength) {
     return {
       score: 10,
       passed: false,
-      feedback: 'Ton brouillon est encore trop court pour une évaluation complète. Prends le temps de développer ton raisonnement pas-à-pas !',
+      feedback: isCP
+        ? 'Écris ton mot ou ton chiffre dans la case pour que le Tuteur IA t\'encourage !'
+        : 'Ton brouillon est encore trop court pour une évaluation complète. Prends le temps de développer ton raisonnement pas-à-pas !',
       strengths: ['Bonne initiative d\'avoir commencé l\'exercice'],
-      improvements: ['Détailler les étapes de calcul', 'Rédiger une phrase de conclusion'],
+      improvements: isCP ? ['Écrire ta réponse'] : ['Détailler les étapes de calcul', 'Rédiger une phrase de conclusion'],
       evaluatedBy: 'Tuteur IA (Guide méthodologique)'
     };
   }
 
-  const systemPrompt = `Tu es TutorAI, tuteur bienveillant et rigoureux.
+  const systemPrompt = isCP
+    ? `Tu es TutorAI, tuteur bienveillant et très encourageant pour un jeune enfant de 6 ans en 1ère année primaire (CP).
+Évalue la réponse de ${studentName} pour cet atelier de CP :
+Titre : ${exercise.title}
+Matière : ${exercise.subject}
+Questions : ${JSON.stringify(exercise.questions)}
+Solution attendue : ${exercise.solutionSummary}
+
+Réponse rédigée par l'élève :
+"""
+${cleanDraft}
+"""
+
+Consignes d'évaluation pour le CP (6 ans) :
+- Les réponses des enfants sont très courtes (ex: "5", "le chat", "rouge"). C'est tout à fait normal !
+- Si la réponse correspond à la question ou montre qu'il a compris, attribue une note excellente (entre 75 et 100) et valide l'exercice (passed: true).
+- Formule une appréciation chaleureuse, positive et encourageante adaptée à son âge.
+
+FORMAT DE RÉPONSE JSON OBLIGATOIRE :
+{
+  "score": 85,
+  "passed": true,
+  "feedback": "Bravo champion ! Tu as très bien répondu...",
+  "strengths": ["Bonne réponse trouvée", "Super concentration"],
+  "improvements": ["Continuer à s'entraîner"]
+}`
+    : `Tu es TutorAI, tuteur bienveillant et rigoureux.
 Évalue le brouillon de travail de ${studentName} pour l'exercice suivant :
 Titre : ${exercise.title}
 Matière : ${exercise.subject}
@@ -2562,7 +3577,23 @@ FORMAT JSON :
   };
 }
 
+/**
+ * Checks if a subject is an authorized school curriculum subject.
+ */
+function isAuthorizedSchoolSubject(subject = '') {
+  if (!subject || typeof subject !== 'string') return true;
+  const s = subject.toLowerCase().trim();
+  const keywords = [
+    'francais', 'français', 'math', 'arabe', 'islam', 'anglais', 'english',
+    'physique', 'chimie', 'pc', 'svt', 'bio', 'santé', 'éveil', 'eveil',
+    'hist', 'géo', 'geo', 'info', 'algo', 'code', 'eps', 'sport',
+    'méthod', 'method', 'philo', 'gest', 'compt', 'éco', 'eco', 'droit'
+  ];
+  return keywords.some(k => s.includes(k));
+}
+
 module.exports = {
+  isAuthorizedSchoolSubject,
   queryOllamaJson,
   generateAiQuiz,
   generateAiExercise,

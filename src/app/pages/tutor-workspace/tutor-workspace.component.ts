@@ -57,4 +57,8 @@ export class TutorWorkspaceComponent implements OnInit, OnDestroy {
       this.isSwitching = false;
     }
   }
+
+  isArabicSubject(subj?: string): boolean {
+    return this.session.isArabicSubject(subj || this.activeSubject);
+  }
 }

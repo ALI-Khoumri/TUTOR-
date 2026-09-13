@@ -354,21 +354,19 @@ mat-card,
 @keyframes fadeSlideIn {
   from {
     opacity: 0;
-    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
 .page-enter {
-  animation: fadeSlideIn 280ms ease-out both;
+  animation: fadeSlideIn 220ms ease-out;
 }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  to { opacity: 1; transform: none; }
 }
 
 @keyframes scaleIn {
