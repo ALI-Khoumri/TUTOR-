@@ -6,6 +6,13 @@ const {
   getBlueprintsForLevelAndSubject, 
   generateTopicTargets 
 } = require('./ai-quiz-blueprints');
+const {
+  METHODOLOGIE_BANK,
+  ARABE_EXPANSION,
+  EDUCATION_ISLAMIQUE_BANK,
+  PHYSIQUE_CHIMIE_BANK,
+  EDUCATION_PHYSIQUE_EXPANSION
+} = require('./quiz-banks/extra-banks');
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || '127.0.0.1';
 const OLLAMA_PORT = parseInt(process.env.OLLAMA_PORT || '11434', 10);
@@ -1784,8 +1791,22 @@ const QUIZ_BANKS_BY_SUBJECT = {
         explanation: 'Faute + Dommage + Lien de causalité = Réparation du préjudice.'
       }
     ]
-  }
+  },
+  'physique_chimie': PHYSIQUE_CHIMIE_BANK,
+  'education_islamique': EDUCATION_ISLAMIQUE_BANK,
+  'methodologie': METHODOLOGIE_BANK,
+  'eps': EDUCATION_PHYSIQUE_EXPANSION
 };
+
+// Merge Arabic expansion questions into core Arabic banks
+['Débutant', 'Intermédiaire', 'Avancé'].forEach(tier => {
+  if (ARABE_EXPANSION && ARABE_EXPANSION[tier]) {
+    QUIZ_BANKS_BY_SUBJECT['arabe'][tier] = [
+      ...(QUIZ_BANKS_BY_SUBJECT['arabe'][tier] || []),
+      ...ARABE_EXPANSION[tier]
+    ];
+  }
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SHUFFLER & SANITIZATION UTILITIES
@@ -2099,16 +2120,13 @@ function getQuestionsFromBank(subjectKey, difficulty = 'Débutant', isPrimaire1 
   }
 
   const subjBank = QUIZ_BANKS_BY_SUBJECT[subjectKey] ||
-                   (subjectKey === 'education_islamique' ? QUIZ_BANKS_BY_SUBJECT['arabe'] : null) ||
-                   (subjectKey === 'physique_chimie' ? QUIZ_BANKS_BY_SUBJECT['math'] : null) ||
-                   QUIZ_BANKS_BY_SUBJECT['francais'] ||
-                   QUIZ_BANKS_BY_SUBJECT['gestion'];
+                   QUIZ_BANKS_BY_SUBJECT['francais'];
   const diffTier = ['Débutant', 'Intermédiaire', 'Avancé'].includes(difficulty) ? difficulty : 'Débutant';
   
-  if (subjBank[diffTier] && subjBank[diffTier].length > 0) {
+  if (subjBank && subjBank[diffTier] && subjBank[diffTier].length > 0) {
     return subjBank[diffTier];
   }
-  return subjBank['Débutant'] || subjBank['Intermédiaire'] || [];
+  return (subjBank && (subjBank['Débutant'] || subjBank['Intermédiaire'] || subjBank['Avancé'])) || [];
 }
 
 /**
@@ -2165,6 +2183,10 @@ function isQuestionDuplicate(candidateText, acceptedQuestions = [], avoidList = 
 /**
  * Ensures correctIndex strictly corresponds to the answer explained in explanation.
  */
+function escapeRegexPattern(string = '') {
+  return String(string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function alignCorrectIndexWithExplanation(options, correctIndex, explanation, questionText = '') {
   if (!explanation || !Array.isArray(options) || options.length === 0) {
     return (correctIndex >= 0 && correctIndex < options.length) ? correctIndex : 0;
@@ -2176,7 +2198,7 @@ function alignCorrectIndexWithExplanation(options, correctIndex, explanation, qu
 
   options.forEach((opt, idx) => {
     const optNorm = normalizeForSimilarity(opt);
-    if (optNorm.length < 2) return;
+    if (!optNorm || optNorm.length < 1) return;
 
     let score = 0;
     
@@ -2197,34 +2219,42 @@ function alignCorrectIndexWithExplanation(options, correctIndex, explanation, qu
       `il s agit de ${optNorm}`,
       `il s agit du ${optNorm}`,
       `il s agit d une ${optNorm}`,
-      `il s agit d un ${optNorm}`
+      `il s agit d un ${optNorm}`,
+      `الاجابة الصحيحة هي ${optNorm}`,
+      `الجواب الصحيح هو ${optNorm}`,
+      `هو ${optNorm}`,
+      `هي ${optNorm}`,
+      `the correct answer is ${optNorm}`,
+      `answer is ${optNorm}`
     ];
 
     let hasExplicitMarker = false;
     for (const pat of explicitPatterns) {
-      if (normExp.includes(pat)) {
-        score += 300;
+      const patRegex = new RegExp('(?:^|\\s)' + escapeRegexPattern(pat) + '(?=\\s|$)', 'i');
+      if (patRegex.test(normExp)) {
+        score += 500;
         hasExplicitMarker = true;
         break;
       }
     }
 
-    if (normExp.includes(optNorm)) {
-      score += optNorm.length * 4;
+    // Exact word/token match in explanation
+    const wordRegex = new RegExp('(?:^|\\s)' + escapeRegexPattern(optNorm) + '(?=\\s|$)', 'i');
+    if (wordRegex.test(normExp)) {
+      score += Math.max(10, optNorm.length * 4);
       const pos = normExp.indexOf(optNorm);
-      score += Math.min(40, pos);
+      score += Math.max(0, 50 - Math.min(50, Math.floor(pos / 2)));
     }
 
     // Penalize if this option text is just an exact verbatim substring from the question prompt
     // and DOES NOT have an explicit answer marker in explanation
-    // (e.g. question asks for antonyme of "heureux", so "heureux" is in the prompt and quoted in explanation!)
-    if (normQ && normQ.includes(optNorm) && !hasExplicitMarker) {
-      score -= 120;
+    if (normQ && wordRegex.test(normQ) && !hasExplicitMarker) {
+      score -= 150;
     }
 
     // Give slight bias to the original index chosen by the model if plausible
     if (idx === correctIndex && score > 0) {
-      score += 25;
+      score += 20;
     }
 
     if (score > highestScore) {
@@ -2344,36 +2374,93 @@ function sanitizedSemanticCheck(questionText, options, correctIndex, isPrimaire1
     return correctIndex;
   }
 
-  // ── RULE 3: "combien font A + B" or "combien font A - B" ────────────────────
-  // For simple arithmetic CP questions, verify the numeric answer matches
-  const arithMatch =
-    qLow.match(/combien font\s+(\d+)\s*\+\s*(\d+)/) ||
-    qLow.match(/combien font\s+(\d+)\s*-\s*(\d+)/);
+  // ── RULE 3: Direct arithmetic operations (multiplication, addition, subtraction, division) ──
+  const arithPattern =
+    questionText.match(/(?:combien font|quel est le résultat de|calculez|calculer)\s+([0-9\s\+\-\*\×x\/÷\(\)]+)/i) ||
+    questionText.match(/^([0-9\s\+\-\*\×x\/÷\(\)]+)\s*=\s*\??$/i) ||
+    qLow.match(/(\d+\s*[\+\-\*\×x\/÷]\s*\d+(?:\s*[\+\-\*\×x\/÷]\s*\d+)*)/);
 
-  if (arithMatch && isPrimaire1) {
-    const [, aStr, bStr] = arithMatch;
-    const a = parseInt(aStr, 10);
-    const b = parseInt(bStr, 10);
-    const isSubtraction = qLow.includes('-');
-    const expected = isSubtraction ? a - b : a + b;
+  if (arithPattern && arithPattern[1]) {
+    const exprRaw = arithPattern[1].replace(/[x×]/gi, '*').replace(/÷/g, '/').replace(/[^\d\+\-\*\/\(\)\.]/g, '').trim();
+    if (exprRaw && /\d/.test(exprRaw) && /^[\d\s\+\-\*\/\(\)\.]+$/.test(exprRaw)) {
+      try {
+        const expected = Function(`"use strict"; return (${exprRaw})`)();
+        if (typeof expected === 'number' && !isNaN(expected) && isFinite(expected)) {
+          const normalize = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+          const currentOpt = normalize(options[correctIndex] || '');
+          const currentNum = parseFloat(currentOpt);
+          if (Math.abs(currentNum - expected) > 0.001) {
+            const fixIdx = options.findIndex(opt => Math.abs(parseFloat(normalize(opt)) - expected) < 0.001);
+            if (fixIdx >= 0) {
+              console.warn(`[SemanticCheck] Auto-corrected arithmetic: ${exprRaw}=${expected}, was '${options[correctIndex]}'`);
+              return fixIdx;
+            }
+            console.warn(`[SemanticCheck] Discarding arithmetic question — correct value ${expected} not among options`);
+            return null;
+          }
+          return correctIndex;
+        }
+      } catch (_) {}
+    }
+  }
 
+  // ── RULE 4: Geometric polygon sides ─────────────────────────────────────────
+  if (qLow.includes('cote') || qLow.includes('cotes')) {
+    let expectedSides = null;
+    if (qLow.includes('triangle')) expectedSides = 3;
+    else if (qLow.includes('losange') || qLow.includes('carre') || qLow.includes('rectangle') || qLow.includes('parallelogramme') || qLow.includes('trapeze') || qLow.includes('quadrilatere')) expectedSides = 4;
+    else if (qLow.includes('pentagone')) expectedSides = 5;
+    else if (qLow.includes('hexagone')) expectedSides = 6;
+    else if (qLow.includes('octogone')) expectedSides = 8;
+    else if (qLow.includes('cercle')) expectedSides = 0;
+
+    if (expectedSides !== null) {
+      const normalize = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+      const currentOptNum = parseInt(normalize(options[correctIndex] || ''), 10);
+      if (currentOptNum !== expectedSides) {
+        const fixIdx = options.findIndex(opt => parseInt(normalize(opt), 10) === expectedSides);
+        if (fixIdx >= 0) {
+          console.warn(`[SemanticCheck] Auto-corrected polygon sides: expected ${expectedSides}, was '${options[correctIndex]}'`);
+          return fixIdx;
+        }
+        console.warn(`[SemanticCheck] Discarding geometry sides question — correct value ${expectedSides} not among options`);
+        return null;
+      }
+      return correctIndex;
+    }
+  }
+
+  // ── RULE 5: Somme des angles d'un triangle ─────────────────────────────────
+  if (qLow.includes('somme des angles') && qLow.includes('triangle')) {
     const normalize = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
     const currentOpt = normalize(options[correctIndex] || '');
-
-    if (parseInt(currentOpt, 10) !== expected) {
-      // Marked answer is arithmetically wrong → auto-fix
-      const fixIdx = options.findIndex(opt => parseInt(normalize(opt), 10) === expected);
+    if (!currentOpt.includes('180')) {
+      const fixIdx = options.findIndex(opt => normalize(opt).includes('180'));
       if (fixIdx >= 0) {
-        console.warn(`[SemanticCheck] Auto-corrected arithmetic: ${a}${isSubtraction?'-':'+'}${b}=${expected}, was '${options[correctIndex]}'`);
+        console.warn(`[SemanticCheck] Auto-corrected triangle angle sum to 180°`);
         return fixIdx;
       }
-      console.warn(`[SemanticCheck] Discarding arithmetic question — correct value ${expected} not among options`);
       return null;
     }
     return correctIndex;
   }
 
-  // ── RULE 4: "nombre de syllabes" ────────────────────────────────────────────
+  // ── RULE 6: Angle droit ───────────────────────────────────────────────────
+  if (qLow.includes('angle droit') && (qLow.includes('mesure') || qLow.includes('degre') || qLow.includes('valeur'))) {
+    const normalize = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    const currentOpt = normalize(options[correctIndex] || '');
+    if (!currentOpt.includes('90')) {
+      const fixIdx = options.findIndex(opt => normalize(opt).includes('90'));
+      if (fixIdx >= 0) {
+        console.warn(`[SemanticCheck] Auto-corrected right angle measure to 90°`);
+        return fixIdx;
+      }
+      return null;
+    }
+    return correctIndex;
+  }
+
+  // ── RULE 7: "nombre de syllabes" ────────────────────────────────────────────
   // Matches any phrasing that includes a hyphenated syllabified word:
   //   "Combien de syllabes a le mot 'ba-na-ne' ?"
   //   "Combien de syllabes entend-on dans « ba-na-ne » ?"
@@ -2434,12 +2521,47 @@ function sanitizedSemanticCheck(questionText, options, correctIndex, isPrimaire1
 }
 
 /**
+ * Strips prompt instructions / leaked blueprint prefixes from question text.
+ * E.g. "Identifier une propriété caractéristique d'une figure plane. Quel est le nombre de côtés d'un losange ?"
+ * becomes "Quel est le nombre de côtés d'un losange ?"
+ */
+function cleanQuestionPromptLeakage(questionText = '') {
+  if (!questionText || typeof questionText !== 'string') return '';
+  let q = questionText.trim();
+
+  // Remove markdown formatting like **Question 1:** or Question 1 :
+  q = q.replace(/^(?:question\s*\d+\s*[:.)-]?|\*\*question\s*\d+\s*[:.)-]?\*\*)\s*/i, '');
+
+  // Remove leading point/axe markers
+  q = q.replace(/^(?:point\s*\d+\s*[:.)-]?|axe\s*\d+\s*[:.)-]?)\s*/i, '');
+
+  // Remove subject category tags like "Calcul numérique :" or "Grammaire / Classes de mots :"
+  q = q.replace(/^(?:calcul numérique|calcul mental|fractions|géométrie|mesures|proportionnalité|nombres décimaux|résolution de problème|algèbre|unités de mesure|puissances et multiples|logique et données|grammaire|conjugaison|orthographe|vocabulaire|syntaxe|accords|figures de style|chimie|physique|électricité|nutrition|respiration|circulation|botanique|écologie|histoire|géographie|النحو|الصرف|الإملاء|المعجم|العقيدة|القرآن الكريم|السيرة النبوية|العبادات)\s*(?:\/[^:]+)?:/i, '').trim();
+
+  // Remove leading infinitive/imperative instructions followed by a period and the real question
+  const instructionPrefixMatch = q.match(/^(?:(?:calculer|calculez|identifier|identifiez|reconna[îi]tre|reconnaissez|trouver|trouvez|distinguer|distinguez|d[ée]terminer|d[ée]terminez|compl[ée]ter|compl[ée]tez|choisir|choisissez|r[ée]soudre|r[ée]solvez|estimer|analyser|nommer|comparer|indiquer|savoir|comprendre|d[ée]crire)\b[^.?!:]*?[.?!:])\s+([A-ZÀ-Ÿ\u0600-\u06FF\d«"].+)/i);
+  if (instructionPrefixMatch && instructionPrefixMatch[1]) {
+    const remainder = instructionPrefixMatch[1].trim();
+    if (remainder.length >= 8) {
+      q = remainder;
+    }
+  }
+
+  // Convert raw "4 x 9 = ?" or "3 + 5 = ?" into a natural question
+  if (/^\d+\s*[\+\-x\*×\/÷]\s*\d+\s*=\s*\??$/i.test(q)) {
+    q = `Combien font ${q.replace(/\s*=\s*\??$/, '')} ?`;
+  }
+
+  return q.trim();
+}
+
+/**
  * Cleans options and ensures NO dummy placeholders ('Choix 1', empty, etc.) reach the student.
  * If 2 or 3 valid options are generated by Ollama, pads them to 4 to preserve the AI question.
  * Returns null if the AI candidate question is structurally unusable.
  */
 function sanitizeQuestionOptions(q, defaultTopic, subjectKey, targetDifficulty, isPrimaire1 = false) {
-  let questionText = (q && q.question ? String(q.question) : '').trim();
+  let questionText = cleanQuestionPromptLeakage(q && q.question ? String(q.question) : '').trim();
   let explanationText = cleanCongratulatoryPrefix(q && q.explanation ? String(q.explanation) : '');
   let topicText = (q && q.topic ? String(q.topic) : defaultTopic).trim();
 
@@ -2682,12 +2804,13 @@ function generateProceduralQuizQuestions(subjectKey, targetDifficulty, neededCou
     }
   }
 
-  // Fill remainder from banks if any slots remain
+  // Fill remainder from banks if any slots remain (strictly matching the requested subject)
   let index = 0;
   const allKnownBank = QUIZ_BANKS_BY_SUBJECT[subjectKey]?.[targetDifficulty] ||
                        QUIZ_BANKS_BY_SUBJECT[subjectKey]?.['Débutant'] ||
-                       QUIZ_BANKS_BY_SUBJECT['gestion']['Intermédiaire'] ||
-                       QUIZ_BANKS_BY_SUBJECT['gestion']['Débutant'];
+                       QUIZ_BANKS_BY_SUBJECT[subjectKey]?.['Intermédiaire'] ||
+                       QUIZ_BANKS_BY_SUBJECT['francais']?.[targetDifficulty] ||
+                       QUIZ_BANKS_BY_SUBJECT['francais']?.['Débutant'] || [];
 
   while (generated.length < neededCount && index < allKnownBank.length * 3) {
     const item = allKnownBank[index % allKnownBank.length];
@@ -2927,12 +3050,13 @@ PLAN PÉDAGOGIQUE IMPÉRATIF — COUVRE CHAQUE POINT DU PLAN SUIVANT (1 QUESTION
 ${formattedBlueprint}
 
 RÈGLES CAPITALES STRICTES :
-1. NE RECOPIE PAS les consignes ou titres du plan ! Rédige un VRAI ÉNONCÉ concret, direct et complet pour l'élève avec des exemples réels (ex: « Dans la phrase : ... », « Calculez : ... », « Quel est... »).
+1. NE RECOPIE PAS les consignes ou titres du plan ! Rédige un VRAI ÉNONCÉ concret, direct et complet pour l'élève avec des exemples réels (ex: « Dans la phrase : ... », « Combien font 4 × 9 ? », « Quel est... »). N'inclus JAMAIS de métatexte comme "Identifier une propriété..." ou "Calculer le résultat..." au début de l'énoncé.
 2. DIVERSITÉ ABSOLUE : Chaque question a sa propre formulation. STRICTEMENT AUCUN copier-coller ni répétition de structure de phrase.
 3. EXACTEMENT 4 OPTIONS DISTINCTES : Chaque question DOIT obligatoirement avoir 4 propositions de réponse complètes et rédigées en toutes lettres dans "options" : [opt1, opt2, opt3, opt4]. Jamais 2, jamais 3, jamais 5. INTERDICTION FORMELLE de placeholders comme "Choix 1", "Option A", texte vide, ou options dupliquées.
 4. SYNONYMES ET ANTONYMES : Le mot testé dans la question ne doit JAMAIS figurer dans les 4 propositions de réponse (ex: pour le synonyme de rapide, propose véloce, lent, calme, immobile).
 5. ALIGNEMENT STRICT : "correctIndex" (0, 1, 2 ou 3) DOIT pointer précisément vers la réponse juste dans "options".
 6. EXPLICATION PÉDAGOGIQUE CLAIRE : Formule obligatoirement : « La bonne réponse est [bonne réponse] car ... ».
+7. EXACTITUDE MATHÉMATIQUE ET SCIENTIFIQUE RIGUREUSE : Vérifie deux fois tous tes calculs, opérations et propriétés scientifiques. Tout calcul erroné est formellement banni. Utilise les unités usuelles du Maroc (DH, m, kg).
 
 FORMAT DE RÉPONSE JSON OBLIGATOIRE :
 {
