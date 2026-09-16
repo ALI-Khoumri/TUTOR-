@@ -754,23 +754,37 @@ const attributionTable = new Table({
           children: [
             new Paragraph({
               alignment: AlignmentType.LEFT,
-              spacing: { line: 260, before: 0, after: 40 },
+              spacing: { line: 240, before: 0, after: 20 },
               children: [
-                new TextRun({ text: 'Encadrante Professionnelle :', font: 'Times New Roman', size: 22, bold: true, underline: { type: UnderlineType.SINGLE }, color: COLOR_NAVY })
+                new TextRun({ text: 'Encadrante Pédagogique :', font: 'Times New Roman', size: 20, bold: true, underline: { type: UnderlineType.SINGLE }, color: COLOR_NAVY })
               ]
             }),
             new Paragraph({
               alignment: AlignmentType.LEFT,
-              spacing: { line: 260, before: 0, after: 20 },
+              spacing: { line: 240, before: 0, after: 30 },
               children: [
-                new TextRun({ text: 'Madame Aïcha FADLI', font: 'Times New Roman', size: 24, bold: true, color: COLOR_EMSI_RED })
+                new TextRun({ text: 'Madame Souad ATIGI (EMSI)', font: 'Times New Roman', size: 22, bold: true, color: COLOR_EMSI_RED })
               ]
             }),
             new Paragraph({
               alignment: AlignmentType.LEFT,
-              spacing: { line: 240, before: 0, after: 120 },
+              spacing: { line: 240, before: 0, after: 20 },
               children: [
-                new TextRun({ text: 'Responsable Digitale (UQASE NEXT SARL)', font: 'Times New Roman', size: 20, italics: true, color: '444444' })
+                new TextRun({ text: 'Encadrante Professionnelle :', font: 'Times New Roman', size: 20, bold: true, underline: { type: UnderlineType.SINGLE }, color: COLOR_NAVY })
+              ]
+            }),
+            new Paragraph({
+              alignment: AlignmentType.LEFT,
+              spacing: { line: 240, before: 0, after: 20 },
+              children: [
+                new TextRun({ text: 'Madame Aïcha FADLI', font: 'Times New Roman', size: 22, bold: true, color: COLOR_EMSI_RED })
+              ]
+            }),
+            new Paragraph({
+              alignment: AlignmentType.LEFT,
+              spacing: { line: 220, before: 0, after: 40 },
+              children: [
+                new TextRun({ text: 'Responsable Digitale (UQASE NEXT SARL)', font: 'Times New Roman', size: 18, italics: true, color: '444444' })
               ]
             })
           ]
@@ -834,7 +848,13 @@ docChildren.push(p([
 ]));
 
 docChildren.push(p([
-  { text: 'Nous adressons notre profonde et sincère reconnaissance à notre encadrante professionnelle, ' },
+  { text: 'Nous adressons notre profonde reconnaissance à notre encadrante pédagogique, ' },
+  { text: 'Madame Souad ATIGI', bold: true, color: COLOR_EMSI_RED },
+  { text: ', pour son suivi attentif, sa disponibilité, ses conseils constructifs et ses précieux encouragements tout au long de la réalisation de ce travail.' }
+]));
+
+docChildren.push(p([
+  { text: 'Nous exprimons également notre sincère gratitude à notre encadrante professionnelle, ' },
   { text: 'Madame Aïcha FADLI', bold: true, color: COLOR_EMSI_RED },
   { text: ', Responsable Digitale au sein d’UQASE NEXT SARL. Nous la remercions tout particulièrement pour sa disponibilité constante, sa bienveillance, la clarté de ses orientations stratégiques et ses précieux conseils méthodologiques. Son leadership éclairé et son expertise reconnue dans le pilotage des projets de transformation digitale ont constitué un appui déterminant pour cadrer notre réflexion, surmonter les verrous techniques et mener à bien les réalisations attendues.' }
 ]));

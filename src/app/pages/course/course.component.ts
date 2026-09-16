@@ -1587,6 +1587,156 @@ export class CourseComponent implements OnInit, OnDestroy {
           ]
         }
       ]
+    },
+    'Anglais': {
+      subject: 'Anglais',
+      category: 'English Language (School Curriculum)',
+      description: 'Grammar, vocabulary, reading comprehension, verb tenses, and writing skills for primary and middle-school students.',
+      chapters: [
+        {
+          id: 'eng-c1',
+          title: 'The Present Simple Tense & Daily Routines',
+          duration: '35 min',
+          level: 'School Curriculum',
+          summary: 'The Present Simple is one of the most important tenses in English. We use it to talk about habits, daily routines, general truths, and facts. The key rule is: with the third-person singular subjects (he, she, it), the verb takes an "-s" or "-es" ending. For example: "She plays football every Saturday." With I, you, we, and they, the verb stays in its base form: "They play football every Saturday."',
+          tips: [
+            {
+              icon: 'psychology',
+              badge: 'Memory Tip',
+              type: 'memo',
+              title: 'The "HeSheIt" Rule',
+              description: 'Remember: He, She, It — don\'t forget the S! Whenever the subject is third-person singular, add -s or -es to the verb (he walks, she watches, it rains).'
+            },
+            {
+              icon: 'school',
+              badge: 'Exam Advice',
+              type: 'exam',
+              title: 'Signal Words for Present Simple',
+              description: 'Look for time expressions like "every day", "always", "usually", "sometimes", "never", "on Mondays" — they tell you to use the Present Simple.'
+            },
+            {
+              icon: 'check_circle',
+              badge: 'Golden Rule',
+              type: 'rule',
+              title: 'Negative & Question Forms',
+              description: 'Use "do not / don\'t" with I/you/we/they and "does not / doesn\'t" with he/she/it. In questions: "Do you like...?" / "Does she like...?" The main verb always stays in its base form after do/does.'
+            }
+          ],
+          keyPoints: [
+            'The Present Simple describes habits, routines, and general truths (e.g., "Water boils at 100°C").',
+            'Third-person singular (he/she/it): add -s or -es to the verb (play → plays, watch → watches, go → goes).',
+            'Negative form: subject + do/does + not + base verb ("She does not like spinach").',
+            'Question form: Do/Does + subject + base verb ("Does he speak French?").'
+          ],
+          rulesOrFormulas: [
+            'Affirmative: Subject + verb (+ s/es for he/she/it). Example: "She reads books every evening."',
+            'Negative: Subject + do/does + not + base verb. Example: "They do not watch TV on school nights."',
+            'Question: Do/Does + subject + base verb? Example: "Does your brother play basketball?"'
+          ],
+          caseExample: 'Daily routine description: "Every morning, Adam wakes up at 7:00 AM. He brushes his teeth, eats breakfast with his family, and walks to school. His classes begin at 8:30 AM. After school, he does his homework and plays with his friends."',
+          pitfalls: [
+            'Forgetting the "-s" with he/she/it: say "She plays" NOT "She play".',
+            'Adding "-s" after "does": say "Does she play?" NOT "Does she plays?".',
+            'Confusing Present Simple with Present Continuous: "I go to school every day" (habit) vs "I am going to school now" (happening right now).'
+          ]
+        },
+        {
+          id: 'eng-c2',
+          title: 'The Past Simple & Irregular Verbs',
+          duration: '40 min',
+          level: 'School Curriculum',
+          summary: 'The Past Simple is used to talk about completed actions in the past. Regular verbs form the past by adding "-ed" (walk → walked, play → played). However, many common English verbs are irregular and change their form completely (go → went, see → saw, eat → ate). The Past Simple is the same for all persons (I/you/he/she/it/we/they went).',
+          tips: [
+            {
+              icon: 'psychology',
+              badge: 'Memory Tip',
+              type: 'memo',
+              title: 'Learn Irregular Verbs in Groups',
+              description: 'Group irregular verbs by their patterns to memorize them faster: (1) No change: cut-cut-cut, put-put-put. (2) Vowel change: sing-sang-sung, drink-drank-drunk. (3) Completely different: go-went-gone, be-was/were-been.'
+            },
+            {
+              icon: 'school',
+              badge: 'Exam Advice',
+              type: 'exam',
+              title: 'Past Simple Signal Words',
+              description: 'Key time expressions that indicate Past Simple: "yesterday", "last week/month/year", "ago" (two days ago), "in 2020", "when I was young". Spot these in exam texts!'
+            },
+            {
+              icon: 'check_circle',
+              badge: 'Golden Rule',
+              type: 'rule',
+              title: 'Negative with "did not"',
+              description: 'In the negative, always use "did not" (didn\'t) + base form of the verb. Say "He did not go" NOT "He did not went". The "did" already carries the past meaning.'
+            }
+          ],
+          keyPoints: [
+            'Regular verbs: add -ed to the base form (play → played, arrive → arrived, stop → stopped).',
+            'Irregular verbs must be memorized: go → went, see → saw, have → had, make → made, take → took.',
+            'The Past Simple form is the same for ALL subjects: "I went / She went / They went".',
+            'Negative: subject + did not (didn\'t) + base verb. Question: Did + subject + base verb?'
+          ],
+          rulesOrFormulas: [
+            'Regular: Subject + verb-ed. Example: "They played football yesterday."',
+            'Irregular: Subject + irregular past form. Example: "She went to the library last Monday."',
+            'Negative: Subject + did not + base verb. Example: "We did not finish the homework."',
+            'Question: Did + subject + base verb? Example: "Did you see the new science exhibit?"'
+          ],
+          caseExample: 'Narrative writing: "Last Friday, our school organized a Science Fair. Sarah and Youssef built a solar-powered toy car from recycled materials. Their teacher saw the project and smiled proudly. The principal awarded them first prize. It was an inspiring day!"',
+          pitfalls: [
+            'Using the past form after "did": say "Did you go?" NOT "Did you went?".',
+            'Adding "-ed" to irregular verbs: say "He ate breakfast" NOT "He eated breakfast".',
+            'Forgetting to use "was/were" for the verb "to be": "I was happy" (NOT "I did be happy").'
+          ]
+        },
+        {
+          id: 'eng-c3',
+          title: 'Modal Verbs: Can, Must, Should & Reading Strategies',
+          duration: '40 min',
+          level: 'School Curriculum',
+          summary: 'Modal verbs are special helping verbs that express ability (can), obligation (must), or advice (should). They are always followed by the base form of the verb without "to". Modal verbs never change form — no "-s", no "-ed", no "-ing". For example: "She can swim" (NOT "She cans swim"), "We must arrive on time" (NOT "We must to arrive").',
+          tips: [
+            {
+              icon: 'psychology',
+              badge: 'Memory Tip',
+              type: 'memo',
+              title: 'CMS — Can, Must, Should',
+              description: 'Remember CMS like a Content Management System! Can = ability/possibility ("I can speak English"), Must = strong obligation/rule ("You must wear a seatbelt"), Should = advice/recommendation ("You should drink more water").'
+            },
+            {
+              icon: 'school',
+              badge: 'Exam Advice',
+              type: 'exam',
+              title: 'Reading Comprehension Strategy',
+              description: 'When answering reading comprehension questions: (1) Read the questions FIRST, (2) Then read the text looking for the answers, (3) Underline key words, (4) Answer using full sentences with evidence from the text.'
+            },
+            {
+              icon: 'check_circle',
+              badge: 'Golden Rule',
+              type: 'rule',
+              title: 'Modal Verbs Never Change',
+              description: 'Three things to remember: (1) No "-s" for third person: "He can" NOT "He cans". (2) No "to" after the modal: "You must go" NOT "You must to go". (3) Negative: add "not" after the modal: "cannot", "must not", "should not".'
+            }
+          ],
+          keyPoints: [
+            'CAN expresses ability or possibility: "She can play the piano." / "Can I borrow your pen?"',
+            'MUST expresses obligation or strong necessity: "Students must arrive on time." / "You must not cheat on exams."',
+            'SHOULD expresses advice or recommendation: "You should eat more vegetables." / "He should study harder."',
+            'All modals are followed by the BASE FORM of the verb (no "to", no "-s", no "-ing").'
+          ],
+          rulesOrFormulas: [
+            'Structure: Subject + modal verb + base verb. Example: "They should study every day."',
+            'Negative: Subject + modal + not + base verb. Example: "You must not use your phone in class."',
+            'Question: Modal + subject + base verb? Example: "Can you help me with this exercise?"',
+            'CANNOT is written as one word, but MUST NOT and SHOULD NOT are two separate words.'
+          ],
+          caseExample: 'Environmental awareness: "Plastic pollution is a big problem. Young people can make a difference by reducing waste. Schools should organize clean-up days. Governments must enforce recycling laws. Together, we can protect our oceans and forests for future generations."',
+          pitfalls: [
+            'Adding "to" after a modal: say "We must protect the environment" NOT "We must to protect".',
+            'Adding "-s" to modal verbs: say "She can swim" NOT "She cans swim".',
+            'Confusing "must" and "should": "must" is a strong obligation (a rule), "should" is advice (a recommendation).'
+          ]
+        }
+      ]
     }
   };
 
@@ -1617,46 +1767,52 @@ export class CourseComponent implements OnInit, OnDestroy {
     return /[\u0600-\u06FF]/.test(text);
   }
 
+  isEnglishSubject(subj?: string): boolean {
+    if (!subj) return false;
+    const s = subj.toLowerCase();
+    return s.includes('anglais') || s.includes('english');
+  }
+
   getUnderstandingTitle(): string {
-    return this.isArabicSubject(this.selectedSubject)
-      ? 'مَضْمُونُ الدَّرْسِ وَمَفَاهِيمُهُ الأَسَاسِيَّةُ'
-      : "Ce qu'il faut comprendre";
+    if (this.isArabicSubject(this.selectedSubject)) return 'مَضْمُونُ الدَّرْسِ وَمَفَاهِيمُهُ الأَسَاسِيَّةُ';
+    if (this.isEnglishSubject(this.selectedSubject)) return 'What You Need to Understand';
+    return "Ce qu'il faut comprendre";
   }
 
   getKeyPointsTitle(): string {
-    return this.isArabicSubject(this.selectedSubject)
-      ? 'نِقَاطٌ وَمَحَاوِرُ أَسَاسِيَّةٌ لِلْحِفْظِ وَالتَّرْكِيزِ'
-      : 'Points clés à retenir';
+    if (this.isArabicSubject(this.selectedSubject)) return 'نِقَاطٌ وَمَحَاوِرُ أَسَاسِيَّةٌ لِلْحِفْظِ وَالتَّرْكِيزِ';
+    if (this.isEnglishSubject(this.selectedSubject)) return 'Key Points to Remember';
+    return 'Points clés à retenir';
   }
 
   getRulesTitle(): string {
-    return this.isArabicSubject(this.selectedSubject)
-      ? 'القَوَاعِدُ وَالشَّوَاهِدُ وَالأَدِلَّةُ الشَّرْعِيَّةُ'
-      : 'Règles & Formules fondamentales';
+    if (this.isArabicSubject(this.selectedSubject)) return 'القَوَاعِدُ وَالشَّوَاهِدُ وَالأَدِلَّةُ الشَّرْعِيَّةُ';
+    if (this.isEnglishSubject(this.selectedSubject)) return 'Essential Grammar Rules';
+    return 'Règles & Formules fondamentales';
   }
 
   getCaseExampleTitle(): string {
-    return this.isArabicSubject(this.selectedSubject)
-      ? 'أَمْثِلَةٌ وَتَطْبِيقَاتٌ عَمَلِيَّةٌ وَسُلُوكِيَّةٌ'
-      : "Cas d'école & Application concrète";
+    if (this.isArabicSubject(this.selectedSubject)) return 'أَمْثِلَةٌ وَتَطْبِيقَاتٌ عَمَلِيَّةٌ وَسُلُوكِيَّةٌ';
+    if (this.isEnglishSubject(this.selectedSubject)) return 'Practical Example & Application';
+    return "Cas d'école & Application concrète";
   }
 
   getPitfallsTitle(): string {
-    return this.isArabicSubject(this.selectedSubject)
-      ? 'أَخْطَاءٌ شَائِعَةٌ فِي الِامْتِحَانِ يَجِبُ تَجَنُّبُهَا'
-      : "Pièges d'examen à éviter absolument";
+    if (this.isArabicSubject(this.selectedSubject)) return 'أَخْطَاءٌ شَائِعَةٌ فِي الِامْتِحَانِ يَجِبُ تَجَنُّبُهَا';
+    if (this.isEnglishSubject(this.selectedSubject)) return 'Common Exam Mistakes to Avoid';
+    return "Pièges d'examen à éviter absolument";
   }
 
   getPracticeCtaDescription(): string {
-    return this.isArabicSubject(this.selectedSubject)
-      ? 'طَبِّقْ مَا تَعَلَّمْتَهُ الآنَ عَبْرَ اخْتِبَارٍ تَفَاعُلِيٍّ أَوْ تَمْرِينٍ تَدْرِيبِيٍّ مُلائِمٍ.'
-      : "Mets en application ce que tu viens d'apprendre avec un quiz ou un exercice adapté.";
+    if (this.isArabicSubject(this.selectedSubject)) return 'طَبِّقْ مَا تَعَلَّمْتَهُ الآنَ عَبْرَ اخْتِبَارٍ تَفَاعُلِيٍّ أَوْ تَمْرِينٍ تَدْرِيبِيٍّ مُلائِمٍ.';
+    if (this.isEnglishSubject(this.selectedSubject)) return 'Put what you just learned into practice with a quiz or an exercise tailored to your level.';
+    return "Mets en application ce que tu viens d'apprendre avec un quiz ou un exercice adapté.";
   }
 
   getExercisesButtonLabel(): string {
-    return this.isArabicSubject(this.selectedSubject)
-      ? 'التَّدَرُّبُ عَلَى التَّمَارِينِ'
-      : "S'entraîner aux Exercices";
+    if (this.isArabicSubject(this.selectedSubject)) return 'التَّدَرُّبُ عَلَى التَّمَارِينِ';
+    if (this.isEnglishSubject(this.selectedSubject)) return 'Practice Exercises';
+    return "S'entraîner aux Exercices";
   }
 
   private initSubjects(): void {
@@ -1933,6 +2089,145 @@ export class CourseComponent implements OnInit, OnDestroy {
             pitfalls: [
               'تَأْجِيلُ المُرَاجَعَةِ إِلَى لَيْلَةِ الِامْتِحَانِ.',
               'تَرْكُ بَعْضِ الأَسْئِلَةِ فَارِغَةً دُونَ مُحَاوَلَةِ الإِجَابَةِ عَنْهَا.'
+            ]
+          }
+        ]
+      };
+    }
+
+    if (this.isEnglishSubject(subjectName)) {
+      return {
+        subject: subjectName,
+        category: 'English Language (School Curriculum)',
+        description: `Study notes, simple explanations, and revision tips for ${subjectName}.`,
+        chapters: [
+          {
+            id: 'gen-en-1',
+            title: `Core Concepts & Foundations of ${subjectName}`,
+            duration: '35 min',
+            level: 'School Curriculum',
+            summary: `This lesson covers the essential concepts, simple definitions, and basic vocabulary for ${subjectName}. Understanding these foundations will help you build confidence and succeed in your studies.`,
+            tips: [
+              {
+                icon: 'psychology',
+                badge: 'Memory Tip',
+                type: 'memo',
+                title: 'Active Learning Method',
+                description: `After reading each concept in ${subjectName}, try to explain it in your own words. This helps you remember it much better than just re-reading.`
+              },
+              {
+                icon: 'school',
+                badge: 'Exam Advice',
+                type: 'exam',
+                title: 'Be Precise and Clear',
+                description: `In ${subjectName}, always support your answers with definitions and rules from the lesson. Never leave an answer without justification.`
+              },
+              {
+                icon: 'check_circle',
+                badge: 'Golden Rule',
+                type: 'rule',
+                title: 'Read Before You Write',
+                description: 'Read the entire question carefully before you start writing your answer. Understanding the question properly is half the battle!'
+              }
+            ],
+            keyPoints: [
+              `Master the key concepts and definitions in ${subjectName}.`,
+              'Understand concrete examples from the lesson.',
+              'Be able to explain your reasoning clearly and simply.'
+            ],
+            rulesOrFormulas: [
+              `Key principle: Always explain your reasoning step by step and refer to the corresponding rule from the lesson.`
+            ],
+            caseExample: `Practice example: Solving a typical question about the fundamentals of ${subjectName}.`,
+            pitfalls: [
+              'Memorizing without truly understanding the meaning.',
+              'Forgetting to reread your answer before moving to the next question.'
+            ]
+          },
+          {
+            id: 'gen-en-2',
+            title: `Methods & Practice Exercises in ${subjectName}`,
+            duration: '40 min',
+            level: 'School Curriculum',
+            summary: `Guided practice, step-by-step exercises, and practical tips to improve your skills in ${subjectName}.`,
+            tips: [
+              {
+                icon: 'psychology',
+                badge: 'Memory Tip',
+                type: 'memo',
+                title: 'Step-by-Step Approach',
+                description: 'Identify what the question asks, recall the relevant rule, then write your answer clearly and logically.'
+              },
+              {
+                icon: 'school',
+                badge: 'Exam Advice',
+                type: 'exam',
+                title: 'Neat Presentation',
+                description: 'Present your work line by line to make it easy to read and pleasant to mark.'
+              },
+              {
+                icon: 'check_circle',
+                badge: 'Golden Rule',
+                type: 'rule',
+                title: 'Check Your Results',
+                description: 'Always ask yourself: does my answer make sense given the information in the question?'
+              }
+            ],
+            keyPoints: [
+              `Techniques for breaking down exercises in ${subjectName}.`,
+              'Applying rules from the lesson methodically.',
+              'Regular practice with varied situations.'
+            ],
+            rulesOrFormulas: [
+              'Typical approach: Identify the data → Recall the rule → Write a justified answer.'
+            ],
+            caseExample: `Worked example: A typical assessment exercise in ${subjectName}.`,
+            pitfalls: [
+              'Skipping steps in your explanation.',
+              'Forgetting to check your spelling and technical vocabulary.'
+            ]
+          },
+          {
+            id: 'gen-en-3',
+            title: `Full Revision & Keys to Success in ${subjectName}`,
+            duration: '35 min',
+            level: 'School Curriculum',
+            summary: `A comprehensive review sheet to revise before an assessment, remember the essentials, and avoid common mistakes in ${subjectName}.`,
+            tips: [
+              {
+                icon: 'psychology',
+                badge: 'Memory Tip',
+                type: 'memo',
+                title: 'Summary Sheet',
+                description: 'Write the 5 most important concepts on a small card and reread it before every test.'
+              },
+              {
+                icon: 'school',
+                badge: 'Exam Advice',
+                type: 'exam',
+                title: 'Time Management',
+                description: 'Start with the questions you know best, then come back to the ones that need more thought. Keep 5 minutes at the end to review.'
+              },
+              {
+                icon: 'check_circle',
+                badge: 'Golden Rule',
+                type: 'rule',
+                title: 'Careful Proofreading',
+                description: 'Always save 5 minutes at the end to proofread all of your answers carefully.'
+              }
+            ],
+            keyPoints: [
+              `Overview of the key points in the ${subjectName} curriculum.`,
+              'Precision in vocabulary and clarity of presentation.',
+              'Confidence in your knowledge through regular practice.'
+            ],
+            rulesOrFormulas: [
+              'Golden rule: Regular work + careful proofreading = the best results.'
+            ],
+            caseExample: `Test preparation: A practice assessment in ${subjectName}.`,
+            pitfalls: [
+              'Waiting until the night before the test to revise.',
+              'Leaving a question unanswered instead of trying to give a reasoned response.'
             ]
           }
         ]
